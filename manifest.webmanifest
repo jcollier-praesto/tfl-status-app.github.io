@@ -1,7 +1,7 @@
 {
-  "name": "Tube Commuter Pro",
-  "short_name": "Tube Status",
-  "description": "Live London Underground status, nearby stations and arrivals.",
+  "name": "London Transit Status",
+  "short_name": "Transit Status",
+  "description": "Independent London transit status, nearby stations and arrivals.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

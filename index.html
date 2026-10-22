@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
-    <meta name="description" content="Live London Underground line status, nearby stations and arrivals.">
+    <meta name="description" content="Independent London transit status, nearby stations, live arrivals and journey planning.">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <title>London Tube Live Status & Arrivals</title>
+    <title>London Transit Status</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,21 +16,6 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: {
-                        tfl: {
-                            bakerloo: '#B16300',
-                            central: '#E32017',
-                            circle: '#FFD300',
-                            district: '#00782A',
-                            hammersmith: '#F4A9BE',
-                            jubilee: '#A0A5A9',
-                            metropolitan: '#9B0056',
-                            northern: '#000000',
-                            piccadilly: '#0019A8',
-                            victoria: '#0098D4',
-                            waterloo: '#95CDBA'
-                        }
-                    },
                     fontFamily: {
                         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
                     }
@@ -59,15 +44,14 @@
     <header class="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80 glass-card transition-colors">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <!-- TfL Style Roundel Icon -->
-                <div class="w-9 h-9 rounded-full border-4 border-red-600 flex items-center justify-center relative bg-white dark:bg-slate-900 shadow-xs">
-                    <div class="w-11 h-2.5 bg-blue-700 absolute"></div>
+                <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center shadow-xs" aria-hidden="true">
+                    <i class="fa-solid fa-route text-white text-sm"></i>
                 </div>
                 <div>
                     <div class="header-title-row flex items-center space-x-2">
                         <h1 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-                            <span class="brand-title-full">Tube Commuter Pro</span>
-                            <span class="brand-title-compact">Tube Status</span>
+                            <span class="brand-title-full">London Transit Status</span>
+                            <span class="brand-title-compact">Transit Status</span>
                         </h1>
                         <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">LIVE</span>
                     </div>
@@ -136,7 +120,9 @@
                 <!-- Custom Location / Postcode Search -->
                 <form onsubmit="handleLocationSearch(event)" class="flex gap-2 min-w-[260px]">
                     <div class="relative flex-1">
-                        <input type="text" id="search-input" placeholder="UK Postcode or station name..."
+                        <label for="search-input" class="sr-only">Search origin postcode or place</label>
+                        <input type="text" id="search-input" placeholder="Postcode, station or place..."
+                               aria-describedby="origin-search-privacy"
                                class="w-full px-3.5 py-2.5 pl-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                     </div>
@@ -146,6 +132,7 @@
                     </button>
                 </form>
             </div>
+            <p id="origin-search-privacy" class="text-[11px] text-slate-500 dark:text-slate-400">This search is sent to OpenStreetMap. Search public places only; do not enter private or confidential information.</p>
 
             <!-- Current Location Badge Bar & Distance Units Toggle -->
             <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -186,7 +173,7 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="journey-planner-title" class="text-sm font-bold text-slate-900 dark:text-white">Plan a Tube journey</h2>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Get route options from your selected origin using TfL Journey Planner.</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">GPS and place origins route from the nearest Tube station using TfL Journey Planner.</p>
                 </div>
                 <div class="hidden sm:block text-right text-xs text-slate-500 dark:text-slate-400">
                     <span>From </span><strong id="journey-origin-label" class="text-slate-700 dark:text-slate-200">Central London (Default)</strong>
@@ -197,7 +184,9 @@
                 <div>
                     <label for="destination-input" class="sr-only">Destination station, postcode or place</label>
                     <input id="destination-input" type="text" required autocomplete="off" placeholder="Destination station, postcode or place..."
+                           aria-describedby="destination-search-privacy"
                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
+                    <p id="destination-search-privacy" class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">TfL is searched first; unmatched places are sent to OpenStreetMap. Do not enter private or confidential information.</p>
                 </div>
                 <div>
                     <label for="journey-preference" class="sr-only">Journey preference</label>
@@ -304,14 +293,20 @@
     </div>
 
     <!-- Footer -->
-    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1">
-        <p>Powered by official TfL Open Data API &bull; Live Station Countdown Timers</p>
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 px-4 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
+        <p>Powered by TfL Open Data. This independent app is not affiliated with or endorsed by TfL.</p>
+        <p>Contains OS data &copy; Crown copyright and database rights 2016. Geomni UK Map data &copy; and database rights [2019].</p>
+        <p>Location search uses <a class="underline hover:text-slate-800 dark:hover:text-white" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap data</a> (&copy; OpenStreetMap contributors, <a class="underline hover:text-slate-800 dark:hover:text-white" href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener noreferrer">ODbL</a>).</p>
         <p class="text-[11px] text-slate-400 dark:text-slate-500">Installable offline app. Nearby station distances are straight-line approximations; walking routes are not calculated.</p>
+        <p class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <a class="underline hover:text-slate-800 dark:hover:text-white" href="privacy.html">Privacy, terms & accessibility</a>
+            <a class="underline hover:text-slate-800 dark:hover:text-white" href="https://github.com/jcollier-praesto/tfl-status-app/blob/main/SUPPORT.md">Support</a>
+        </p>
     </footer>
 
     <!-- Toast Container -->
     <div id="toast-container" role="status" aria-live="polite" aria-atomic="false" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <script type="module" src="app.js?v=6"></script>
+    <script type="module" src="app.js?v=8"></script>
 </body>
 </html>

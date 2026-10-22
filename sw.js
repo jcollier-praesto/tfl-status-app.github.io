@@ -1,10 +1,11 @@
-const CACHE_NAME = 'tfl-commuter-v6';
-const APP_SHELL = ['./', './index.html', './app.css?v=6', './app.js?v=6', './app-utils.mjs?v=6', './app-data.mjs?v=6', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'tfl-commuter-v8';
+const APP_SHELL = ['./', './index.html', './app.css?v=6', './app.js?v=8', './app-utils.mjs?v=7', './app-data.mjs?v=7', './manifest.webmanifest', './icon.svg', './privacy.html', './privacy.js?v=1'];
 const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
 ];
+let cacheEnabled = true;
 
 function exposeTfLCacheHeaders(headers) {
     const exposedHeaders = headers.get('Access-Control-Expose-Headers') || '';
@@ -46,11 +47,36 @@ self.addEventListener('activate', event => {
     );
 });
 
+self.addEventListener('message', event => {
+    if (event.data?.type === 'enable-storage') {
+        cacheEnabled = true;
+        return;
+    }
+    if (event.data?.type === 'disable-storage') {
+        cacheEnabled = false;
+        event.waitUntil(
+            caches.keys()
+                .then(keys => Promise.all(keys
+                    .filter(key => key.startsWith('tfl-commuter-') || key === 'tfl-pwa-v2')
+                    .map(key => caches.delete(key))))
+                .then(() => self.registration.unregister())
+        );
+    }
+});
+
 self.addEventListener('fetch', event => {
     const requestUrl = new URL(event.request.url);
     if (event.request.method !== 'GET') return;
+    if (!cacheEnabled) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
 
     if (requestUrl.origin === self.location.origin) {
+        if (requestUrl.pathname.endsWith('/geocoding-config.json')) {
+            event.respondWith(fetch(event.request, { cache: 'no-store' }));
+            return;
+        }
         event.respondWith(
             fetch(event.request)
                 .then(async response => {
@@ -74,10 +100,14 @@ self.addEventListener('fetch', event => {
 
     if (requestUrl.hostname === 'api.tfl.gov.uk') {
         const isJourneyRequest = requestUrl.pathname.includes('/Journey/JourneyResults/');
+        const isLocationLookup = requestUrl.pathname === '/StopPoint'
+            && requestUrl.searchParams.has('lat')
+            && requestUrl.searchParams.has('lon');
+        const isSearchRequest = requestUrl.pathname.includes('/StopPoint/Search');
         event.respondWith(
             fetch(event.request)
                 .then(async response => {
-                    if (response.ok && !isJourneyRequest) {
+                    if (response.ok && !isJourneyRequest && !isLocationLookup && !isSearchRequest) {
                         const body = await response.clone().arrayBuffer();
                         const headers = new Headers(response.headers);
                         headers.set('X-Tfl-Cached-At', String(Date.now()));
@@ -96,7 +126,7 @@ self.addEventListener('fetch', event => {
                 })
                 .catch(async () => {
                     const cached = await caches.match(event.request);
-                    if (cached && !isJourneyRequest && !requestUrl.pathname.endsWith('/Arrivals')) {
+                    if (cached && !isJourneyRequest && !isLocationLookup && !isSearchRequest && !requestUrl.pathname.endsWith('/Arrivals')) {
                         const headers = new Headers(cached.headers);
                         headers.set('X-Tfl-Offline', 'true');
                         exposeTfLCacheHeaders(headers);

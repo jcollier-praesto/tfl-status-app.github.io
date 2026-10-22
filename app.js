@@ -1,5 +1,5 @@
-import { escapeHtml, haversineDistance, isWithinCommuteWindow, normalizeJourneyOptions, normalizePreferences, sortLines } from './app-utils.mjs?v=6';
-import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
+import { escapeHtml, haversineDistance, isWithinCommuteWindow, nearestStation, normalizeJourneyOptions, normalizePreferences, normalizeTubeStations, sortLines } from './app-utils.mjs?v=7';
+import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
 
 // App State
         let tubeDataRaw = [];
@@ -18,6 +18,10 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
         let refreshCountdownVal = 60;
         let countdownTimer = null;
         let journeyRequestId = 0;
+        const geocodeCache = new Map();
+        let geocoderConfigPromise = null;
+        let lastGeocoderRequestAt = 0;
+        let geocoderRequestQueue = Promise.resolve();
 
         function readStoredJson(key, fallback) {
             try {
@@ -47,6 +51,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
         }
 
         function saveStoredValue(key, value) {
+            if (key !== 'tfl_storage_disabled' && readStoredValue('tfl_storage_disabled') === 'true') return;
             try {
                 localStorage.setItem(key, JSON.stringify(value));
             } catch (error) {
@@ -89,6 +94,10 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
 
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
+                if (readStoredValue('tfl_storage_disabled') === 'true') {
+                    navigator.serviceWorker.controller?.postMessage({ type: 'disable-storage' });
+                    return;
+                }
                 navigator.serviceWorker.register('./sw.js')
                     .catch(error => {
                         console.error('Service worker registration failed:', error);
@@ -278,7 +287,6 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
 
             const pinnedItems = tubeDataRaw.filter(l => pinnedLines.has(l.id));
             container.innerHTML = pinnedItems.map(line => {
-                const meta = TFL_LINES[line.id] || { color: '#000000' };
                 const statusObj = line.lineStatuses && line.lineStatuses[0] ? line.lineStatuses[0] : {};
                 const isGood = (statusObj.statusSeverity === 10);
                 const statusName = statusObj.statusSeverityDescription || 'Good Service';
@@ -286,7 +294,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
 
                 return `
                     <button type="button" onclick="scrollToLineCard('${line.id}')" class="cursor-pointer inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs">
-                        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${meta.color};"></span>
+                        <span class="w-3 h-3 rounded-full flex-shrink-0 bg-blue-500"></span>
                         <span class="text-xs font-bold text-slate-800 dark:text-slate-100">${safeName}</span>
                         <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${isGood ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'}">
                             ${escapeHtml(statusName)}
@@ -406,11 +414,9 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
 
             if (!alternative) return null;
 
-            const altMeta = TFL_LINES[alternative.line.id];
             return {
                 altLineName: alternative.line.name,
                 altStation: alternative.prox.nearestNode.name,
-                color: altMeta ? altMeta.color : '#3b82f6',
                 distanceKm: alternative.prox.distanceKm
             };
         }
@@ -439,8 +445,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                     reason: reason,
                     distanceKm: proximity.distanceKm,
                     nearestNode: proximity.nearestNode,
-                    isPinned: isPinned,
-                    meta: TFL_LINES[line.id] || { color: '#000000', textColor: '#FFFFFF' }
+                    isPinned: isPinned
                 };
             });
             const filterText = document.getElementById('line-filter').value.trim().toLocaleLowerCase();
@@ -510,7 +515,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                 return `
                     <div id="card-${line.id}" class="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col">
                         <!-- Card Banner Top -->
-                        <div class="h-2.5 w-full flex items-center justify-end px-3" style="background-color: ${line.meta.color};"></div>
+                        <div class="h-2.5 w-full bg-blue-600"></div>
                         
                         <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
                             <div>
@@ -520,7 +525,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                                         <button aria-label="${line.isPinned ? 'Unpin' : 'Pin'} ${safeName} for daily commute" aria-pressed="${line.isPinned}" onclick="togglePinLine('${line.id}')" title="Star Line for Daily Commute" class="text-base focus:outline-none transition-transform active:scale-125">
                                             <i class="fa-${line.isPinned ? 'solid text-amber-400' : 'regular text-slate-300 dark:text-slate-600 hover:text-amber-400'} fa-star"></i>
                                         </button>
-                                        <div class="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-2xs" style="background-color: ${line.meta.color};"></div>
+                                        <div class="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-2xs bg-blue-500"></div>
                                         <h3 class="font-bold text-base text-slate-900 dark:text-white leading-tight">${safeName}</h3>
                                     </div>
 
@@ -644,6 +649,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
             userLocation = {
                 lat: parseFloat(lat),
                 lon: parseFloat(lon),
+                naptan,
                 name: name
             };
 
@@ -686,27 +692,70 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
         }
 
         async function geocodeLondonLocation(query) {
-            const params = new URLSearchParams({
-                format: 'jsonv2',
-                q: `${query}, London, UK`,
-                limit: '1'
-            });
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
-            if (!response.ok) throw new Error(`Geocoding service returned HTTP ${response.status}`);
-            const results = await response.json();
-            if (!Array.isArray(results) || !results.length) return null;
+            const key = query.trim().toLocaleLowerCase();
+            if (geocodeCache.has(key)) return geocodeCache.get(key);
 
-            const place = results[0];
-            const lat = Number(place.lat);
-            const lon = Number(place.lon);
-            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-                throw new Error('Geocoding service returned invalid coordinates.');
+            const lookup = geocoderRequestQueue.then(async () => {
+                const waitMs = Math.max(0, 1000 - (Date.now() - lastGeocoderRequestAt));
+                if (waitMs) await new Promise(resolve => setTimeout(resolve, waitMs));
+
+                const config = await getGeocoderConfig();
+                const params = new URLSearchParams({
+                    format: config.format,
+                    q: `${query}, London, UK`,
+                    limit: '1'
+                });
+                lastGeocoderRequestAt = Date.now();
+                const response = await fetch(`${config.endpoint}?${params}`, { referrerPolicy: 'origin' });
+                if (!response.ok) throw new Error(`Geocoding service returned HTTP ${response.status}`);
+                const results = await response.json();
+                if (!Array.isArray(results) || !results.length) return null;
+
+                const place = results[0];
+                const lat = Number(place.lat);
+                const lon = Number(place.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    throw new Error('Geocoding service returned invalid coordinates.');
+                }
+                return {
+                    lat,
+                    lon,
+                    name: String(place.display_name || query).split(',')[0]
+                };
+            });
+            geocodeCache.set(key, lookup);
+            geocoderRequestQueue = lookup.catch(() => {});
+            try {
+                const place = await lookup;
+                geocodeCache.set(key, place);
+                if (geocodeCache.size > 50) geocodeCache.delete(geocodeCache.keys().next().value);
+                return place;
+            } catch (error) {
+                geocodeCache.delete(key);
+                throw error;
             }
-            return {
-                lat,
-                lon,
-                name: String(place.display_name || query).split(',')[0]
-            };
+        }
+
+        async function getGeocoderConfig() {
+            if (!geocoderConfigPromise) {
+                geocoderConfigPromise = fetch('./geocoding-config.json', { cache: 'no-store' })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Geocoding configuration returned HTTP ${response.status}`);
+                        return response.json();
+                    })
+                    .then(config => {
+                        const endpoint = new URL(config.endpoint);
+                        if (endpoint.protocol !== 'https:' || config.format !== 'jsonv2') {
+                            throw new Error('Geocoding configuration must use an HTTPS Nominatim-compatible endpoint.');
+                        }
+                        return { endpoint: endpoint.href, format: config.format };
+                    })
+                    .catch(error => {
+                        geocoderConfigPromise = null;
+                        throw error;
+                    });
+            }
+            return geocoderConfigPromise;
         }
 
         function updateJourneyOriginLabel() {
@@ -725,7 +774,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
             button.disabled = true;
             button.querySelector('span').textContent = 'Finding destination...';
             try {
-                const place = await geocodeLondonLocation(query);
+                const place = await searchTubeStation(query) || await geocodeLondonLocation(query);
                 if (!place) {
                     renderJourneyMessage(`Destination "${query}" was not found. Try a Tube station, London postcode or nearby place.`, true);
                     return;
@@ -741,6 +790,54 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                 button.disabled = false;
                 button.querySelector('span').textContent = 'Find routes';
             }
+        }
+
+        async function searchTubeStation(query) {
+            const terms = [query, query.replace(/\s+(?:underground\s+)?station$/i, '').trim()]
+                .filter((term, index, list) => term && list.indexOf(term) === index);
+            for (const term of terms) {
+                const params = new URLSearchParams({ query: term, modes: 'tube' });
+                const response = await fetch(`https://api.tfl.gov.uk/StopPoint/Search?${params}`);
+                if (!response.ok) throw new Error(`TfL station search returned HTTP ${response.status}`);
+                const data = await response.json();
+                const [station] = normalizeTubeStations(data.matches);
+                if (station) return station;
+            }
+            return null;
+        }
+
+        async function findNearbyTubeStation(location) {
+            for (const radius of [2000, 5000]) {
+                const params = new URLSearchParams({
+                    lat: String(location.lat),
+                    lon: String(location.lon),
+                    stopTypes: 'NaptanMetroStation',
+                    radius: String(radius)
+                });
+                const response = await fetch(`https://api.tfl.gov.uk/StopPoint?${params}`);
+                if (!response.ok) throw new Error(`TfL nearby-station search returned HTTP ${response.status}`);
+                const data = await response.json();
+                const station = nearestStation(normalizeTubeStations(data.stopPoints), location);
+                if (station) return station;
+            }
+            return null;
+        }
+
+        async function resolveJourneyOrigin() {
+            if (userLocation.naptan) {
+                return {
+                    id: userLocation.naptan,
+                    name: userLocation.name,
+                    displayName: userLocation.name
+                };
+            }
+            const station = await findNearbyTubeStation(userLocation);
+            if (!station) return null;
+            return {
+                id: station.id,
+                name: station.name,
+                displayName: `${station.name} (nearest Tube station to ${userLocation.name})`
+            };
         }
 
         function handleJourneyPreferenceChange() {
@@ -760,18 +857,34 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
             };
             button.disabled = true;
             button.querySelector('span').textContent = 'Finding routes...';
-            renderJourneyMessage(`Finding Tube routes from ${userLocation.name} to ${destinationLocation.name}...`);
+            renderJourneyMessage(`Preparing a Tube route from ${userLocation.name}...`);
 
             try {
-                const from = `${userLocation.lat.toFixed(6)},${userLocation.lon.toFixed(6)}`;
-                const to = `${destinationLocation.lat.toFixed(6)},${destinationLocation.lon.toFixed(6)}`;
+                if (!destinationLocation.id) {
+                    const station = await searchTubeStation(destinationLocation.name);
+                    if (station) {
+                        destinationLocation = station;
+                        document.getElementById('destination-input').value = station.name;
+                        savePreferences();
+                    }
+                }
+                if (requestId !== journeyRequestId) return;
+                const origin = await resolveJourneyOrigin();
+                if (!origin) {
+                    renderJourneyMessage(`No Tube station was found within 5 km of ${userLocation.name}. Choose a Tube station or a nearer origin.`, true);
+                    return;
+                }
+                if (requestId !== journeyRequestId) return;
+                const from = origin.id || `${userLocation.lat.toFixed(6)},${userLocation.lon.toFixed(6)}`;
+                const to = destinationLocation.id
+                    || `${destinationLocation.lat.toFixed(6)},${destinationLocation.lon.toFixed(6)}`;
                 const params = new URLSearchParams({
                     mode: 'tube',
                     journeyPreference: preference,
                     includeAlternativeRoutes: 'true',
                     useRealTimeLiveArrivals: 'true',
                     applyHtmlMarkup: 'false',
-                    fromName: userLocation.name,
+                    fromName: origin.name,
                     toName: destinationLocation.name
                 });
                 const url = `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}?${params}`;
@@ -783,7 +896,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                 const routes = normalizeJourneyOptions(data.journeys);
                 if (!routes.length) {
                     renderJourneyMessage(data.journeyPlannerError?.message
-                        || 'TfL did not return a Tube route for these locations. Try a nearby station or change your origin.', true);
+                        || `TfL found no Tube route from ${origin.name} to ${destinationLocation.name}. Try a different destination or origin.`, true);
                     return;
                 }
 
@@ -794,7 +907,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
                 } else {
                     routes.sort((a, b) => a.duration - b.duration);
                 }
-                renderJourneyOptions(routes.slice(0, 3), preferenceLabels[preference] || 'Recommended');
+                renderJourneyOptions(routes.slice(0, 3), preferenceLabels[preference] || 'Recommended', origin.displayName);
             } catch (error) {
                 if (requestId !== journeyRequestId) return;
                 console.error('Unable to plan Tube journey:', error);
@@ -813,13 +926,11 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
             results.innerHTML = `<p ${isError ? 'role="alert"' : ''} class="text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}">${escapeHtml(message)}</p>`;
         }
 
-        function renderJourneyOptions(routes, preferenceLabel) {
+        function renderJourneyOptions(routes, preferenceLabel, originLabel) {
             const results = document.getElementById('journey-results');
             const routeCards = routes.map((route, index) => {
                 const lineChips = route.lines.map(lineName => {
-                    const lineId = Object.keys(TFL_LINES).find(id => TFL_LINES[id].name === lineName);
-                    const line = lineId ? TFL_LINES[lineId] : null;
-                    return `<span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-bold" style="background-color:${line ? line.color : '#e2e8f0'};color:${line ? line.textColor : '#1e293b'}">${escapeHtml(lineName)} line</span>`;
+                    return `<span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-200">${escapeHtml(lineName)} line</span>`;
                 }).join('');
                 const legs = route.legs.map(leg => {
                     const modeLabel = leg.mode === 'tube' ? (leg.lineName ? `${leg.lineName} line` : 'Tube') : leg.mode;
@@ -860,7 +971,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
             results.innerHTML = `
                 <div class="space-y-3">
                     <div>
-                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Routes: ${escapeHtml(userLocation.name)} to ${escapeHtml(destinationLocation.name)}</h3>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Routes: ${escapeHtml(originLabel)} to ${escapeHtml(destinationLocation.name)}</h3>
                         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tube and walking options from TfL Journey Planner. Times and disruption details may change.</p>
                     </div>
                     <div class="grid gap-2.5">${routeCards}</div>

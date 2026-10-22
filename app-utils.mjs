@@ -8,6 +8,36 @@ export function haversineDistance(lat1, lon1, lat2, lon2) {
     return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export function normalizeTubeStations(stations) {
+    if (!Array.isArray(stations)) return [];
+    return stations.flatMap(station => {
+        const id = station?.naptanId || station?.id;
+        const modes = Array.isArray(station?.modes) ? station.modes : [];
+        const lat = Number(station?.lat);
+        const lon = Number(station?.lon);
+        if (typeof id !== 'string' || !/^[A-Za-z0-9]+$/.test(id)
+            || !modes.includes('tube')
+            || !Number.isFinite(lat) || !Number.isFinite(lon)
+            || !station.commonName && !station.name) return [];
+        return [{
+            id,
+            name: station.commonName || station.name,
+            lat,
+            lon
+        }];
+    });
+}
+
+export function nearestStation(stations, location) {
+    if (!Array.isArray(stations) || !stations.length) return null;
+    return stations.reduce((nearest, station) => {
+        const distanceKm = haversineDistance(location.lat, location.lon, station.lat, station.lon);
+        return !nearest || distanceKm < nearest.distanceKm
+            ? { ...station, distanceKm }
+            : nearest;
+    }, null);
+}
+
 export function isWithinCommuteWindow(now, commuteTimes, windowMinutes = 30) {
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     return commuteTimes.some(time => {

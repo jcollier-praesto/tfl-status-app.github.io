@@ -4,8 +4,10 @@ import {
     escapeHtml,
     haversineDistance,
     isWithinCommuteWindow,
+    nearestStation,
     normalizeJourneyOptions,
     normalizePreferences,
+    normalizeTubeStations,
     sortLines
 } from '../app-utils.mjs';
 
@@ -16,6 +18,22 @@ test('haversine distance is zero for the same point', () => {
 test('haversine distance returns a plausible London station distance', () => {
     const distance = haversineDistance(51.5074, -0.1278, 51.515, -0.1415);
     assert.ok(distance > 1 && distance < 2);
+});
+
+test('Tube station results are validated and the nearest station is selected', () => {
+    const stations = normalizeTubeStations([
+        { naptanId: '940GZZLUSWK', commonName: 'Southwark Underground Station', lat: 51.50427, lon: -0.105331, modes: ['tube'] },
+        { id: 'non-tube', name: 'Bus stop', lat: 51.5, lon: -0.1, modes: ['bus'] },
+        { id: 'bad-coordinate', name: 'Invalid station', lat: 'not-a-number', lon: -0.1, modes: ['tube'] },
+        { id: 'missing-mode', name: 'Unknown station', lat: 51.5, lon: -0.1 }
+    ]);
+    const nearest = nearestStation(stations, { lat: 51.5043, lon: -0.1053 });
+
+    assert.equal(stations.length, 1);
+    assert.equal(nearest.id, '940GZZLUSWK');
+    assert.equal(nearest.name, 'Southwark Underground Station');
+    assert.ok(nearest.distanceKm < 0.01);
+    assert.equal(nearestStation([], { lat: 0, lon: 0 }), null);
 });
 
 test('commute notifications are limited to the configured 30-minute windows', () => {

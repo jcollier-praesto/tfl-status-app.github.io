@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Privacy, licensing and accessibility information for London Transit Status.">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="app.css?v=6">
+    <title>Privacy, terms and accessibility - London Transit Status</title>
+    <style>
+        body { background: #f8fafc; color: #1e293b; font: 16px/1.6 system-ui, sans-serif; margin: 0; }
+        main { max-width: 54rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+        a { color: #1d4ed8; text-decoration: underline; }
+        h1, h2 { line-height: 1.25; }
+        h1 { font-size: 2rem; }
+        h2 { font-size: 1.25rem; margin-top: 2rem; }
+        .notice { border-left: 4px solid #d97706; background: #fff7ed; padding: 1rem; }
+        button { border: 0; border-radius: .5rem; background: #1d4ed8; color: white; padding: .7rem 1rem; font: inherit; cursor: pointer; }
+        button:focus-visible, a:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+        #clear-status { min-height: 1.5em; }
+        @media (prefers-color-scheme: dark) {
+            body { background: #020617; color: #e2e8f0; }
+            .notice { background: #451a03; }
+            a { color: #93c5fd; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <p><a href="./">← Back to London Transit Status</a></p>
+    <h1>Privacy, terms and accessibility</h1>
+    <p>Last updated: 22 October 2026</p>
+
+    <section aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Privacy notice</h2>
+        <div class="notice">
+            <strong>Contact limitation:</strong> the data controller is the operator of this GitHub Pages site (the repository maintainer). General support is available through
+            <a href="https://github.com/jcollier-praesto/tfl-status-app/discussions">public GitHub Discussions</a>.
+            Discussions are public and are not a private channel for privacy requests. Do not post personal, confidential or sensitive information.
+            A private contact channel is not published, so this notice does not provide a confidential route for exercising data-protection rights.
+        </div>
+
+        <h3>Information processed</h3>
+        <ul>
+            <li>The app stores your selected origin and destination, pinned lines, display preferences and commute-alert times in this browser's local storage. If you choose GPS, your coordinates can be saved with your selected origin until you clear this app's data.</li>
+            <li>Origin text searches and destination queries not matched as TfL stations are sent to OpenStreetMap Foundation's public Nominatim geocoder. Destination station searches and TfL route/status requests are sent to TfL. Choosing GPS sends coordinates to TfL to find nearby stations; journey requests then use a station identifier rather than your raw coordinates. These providers process requests under their own policies.</li>
+            <li>The service worker stores app files and some TfL responses on this device for offline use. Free-text station searches, precise-coordinate nearby-station lookups, geocoding responses and journey results are not cached by the app.</li>
+            <li>The app does not operate accounts, an application server, advertising or analytics. GitHub Pages hosts the site and may process technical access data under GitHub's policies.</li>
+            <li>External interface resources are requested from Tailwind CSS's CDN, cdnjs and Google Fonts. Those providers may receive connection and browser information when the resources load.</li>
+        </ul>
+
+        <h3>Purpose, lawful basis and retention</h3>
+        <p>The app uses information you enter or select to provide status, proximity and journey features you request. Where UK data-protection law applies, the maintainer's intended lawful basis is legitimate interests in providing and maintaining this non-commercial information service. Browser location and notification features are used only after you initiate them and grant the relevant browser permission. The app does not make decisions with legal or similarly significant effects.</p>
+        <p>Local settings remain until you clear them or your browser removes them. The service-worker cache remains until you clear it, remove site data, or the browser evicts it. Search results are cached in memory only for the current page session. TfL, OpenStreetMap Foundation, GitHub and the external asset providers may retain or process their own request logs under their respective policies; this app cannot control their retention or any international transfers.</p>
+        <p>The app does not intentionally set first-party tracking cookies or run analytics or advertising. It uses browser storage to remember selections and preferences and to provide offline functionality. The control below is a simple way to object to persistent app storage and disable it on this device.</p>
+
+        <h3>Control and deletion</h3>
+        <p>Saved app settings remain in this browser until removed. Use the control below to stop or resume saving preferences; stopping also clears this app's local-storage entries and offline caches, and disables its service worker until you opt back in. A small local setting records your choice so it is respected after reload. This does not change the browser's separate notification permission; manage that in your browser settings. You can also deny or revoke location permission in browser settings.</p>
+        <button id="toggle-local-storage" type="button">Stop saving and clear app data</button>
+        <p id="clear-status" role="status" aria-live="polite"></p>
+        <p>The public Nominatim service limits each application to at most one request per second. This app rate-limits and caches searches per open page, but a static site cannot enforce an aggregate limit across all visitors. If usage grows beyond the provider's policy, the configured geocoder must be changed or disabled.</p>
+
+        <h3>Third-party privacy information</h3>
+        <ul>
+            <li><a href="https://www.gov.uk/government/organisations/transport-for-london/about/personal-information-charter" rel="noopener noreferrer">TfL privacy information</a> and <a href="https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service" rel="noopener noreferrer">TfL transport data terms</a>.</li>
+            <li><a href="https://operations.osmfoundation.org/policies/nominatim/" rel="noopener noreferrer">Nominatim usage policy</a>, <a href="https://osmfoundation.org/wiki/Privacy_Policy" rel="noopener noreferrer">OpenStreetMap Foundation privacy policy</a> and <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">OpenStreetMap copyright and licence</a>.</li>
+            <li><a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google privacy policy</a>, <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener noreferrer">Cloudflare privacy policy</a> and <a href="https://tailwindcss.com/" rel="noopener noreferrer">Tailwind CSS</a>.</li>
+            <li><a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" rel="noopener noreferrer">GitHub privacy statement</a>.</li>
+        </ul>
+        <p>Where data-protection law applies, you may have rights to request access, correction, deletion, restriction or object to processing, and to complain to the <a href="https://ico.org.uk/make-a-complaint/" rel="noopener noreferrer">UK Information Commissioner's Office</a>. The maintainer does not receive the app's local browser data. A private contact channel for requests about data processed by the maintainer is not currently published; public discussions are not suitable for confidential requests. Requests about information held by third-party services should be directed to those providers.</p>
+    </section>
+
+    <section aria-labelledby="terms-heading">
+        <h2 id="terms-heading">Service and licensing information</h2>
+        <p>This is an independent, non-commercial project and is not affiliated with, endorsed by or an official service of Transport for London. TfL service information can change or be delayed. Do not rely on this app as the sole source for travel, accessibility or safety decisions; check current information with TfL.</p>
+        <p>TfL data is provided under the <a href="https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service" rel="noopener noreferrer">TfL Transport Data Service licence</a>. OpenStreetMap data is available under the <a href="https://opendatacommons.org/licenses/odbl/" rel="noopener noreferrer">Open Database Licence (ODbL)</a>. Interface icons are from <a href="https://fontawesome.com/license/free" rel="noopener noreferrer">Font Awesome Free</a>.</p>
+    </section>
+
+    <section aria-labelledby="accessibility-heading">
+        <h2 id="accessibility-heading">Accessibility statement</h2>
+        <p>We aim to make this site usable with a keyboard and assistive technology, but it has not had an independent accessibility audit and we cannot claim that it meets WCAG 2.2 AA. If you encounter a barrier, report it in <a href="https://github.com/jcollier-praesto/tfl-status-app/discussions">GitHub Discussions</a> once enabled; discussions are public, so do not include private information. This personal project is not operated by a public-sector body. Public-sector accessibility rules and statement requirements may apply if that changes.</p>
+    </section>
+</main>
+<script type="module" src="privacy.js?v=1"></script>
+</body>
+</html>

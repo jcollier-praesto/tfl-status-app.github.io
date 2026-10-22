@@ -1,6 +1,6 @@
-# Tube Commuter Pro
+# London Transit Status
 
-A static web app for London Underground service status, nearby stations, live arrivals and Tube journey planning, powered by the TfL Open Data API.
+An independent static web app for London Underground service status, nearby stations, live arrivals and Tube journey planning, powered by TfL Open Data.
 
 ## Run locally
 
@@ -20,7 +20,7 @@ The app uses relative asset, manifest, and service-worker URLs, so it works both
 
 ## Tests
 
-The distance, commute-window, preference, journey summary, sorting and HTML-escaping utilities are tested with Node's built-in test runner:
+The distance, nearest-station, commute-window, preference, journey summary, sorting and HTML-escaping utilities are tested with Node's built-in test runner:
 
 ```sh
 npm test
@@ -32,4 +32,12 @@ After the first online visit, the service worker caches the app shell, external 
 
 Commute notifications are checked while the app page is open, during the 30 minutes before or after either saved commute time. Browser notifications do not run as background push notifications after the app is closed.
 
-Nearby station distances are straight-line approximations. Journey options use TfL Journey Planner and can include walking legs, Tube lines, transfer counts and reported disruptions. Destination searches are geocoded by OpenStreetMap Nominatim; journey coordinates are then sent to TfL.
+Nearby station distances are straight-line approximations. Journey options use TfL Journey Planner and can include walking legs, Tube lines, transfer counts and reported disruptions. Tube station destinations are resolved through TfL first, so station names such as "Southwark" work without adding "station." Other destinations are geocoded by OpenStreetMap Nominatim, subject to its usage policy; requests are user initiated, rate limited to at most one per second per open app, and cached only in memory for the current page session. The endpoint can be changed in `geocoding-config.json` to a compatible service. Coordinate origins, including GPS, are routed from the nearest Tube station found within 5 km; the route results identify that station.
+
+## Privacy and support
+
+The app's [privacy, terms and accessibility notice](./privacy.html) describes local browser storage and third-party requests and provides a control to clear locally saved app data. General support is available through [GitHub Discussions](https://github.com/jcollier-praesto/tfl-status-app/discussions); discussions are public, so do not include personal or confidential information. A private channel for data-protection requests is not currently published.
+
+## Data attribution and branding
+
+The app includes the attribution required by the TfL Transport Data Service licence and OpenStreetMap's ODbL. It is not an official TfL service and does not use TfL's roundel or line-colour branding.

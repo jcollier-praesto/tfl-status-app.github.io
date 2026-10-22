@@ -1,17 +1,16 @@
-// Official TfL Line Branding Meta
-        export const TFL_LINES = {
-            'bakerloo': { name: 'Bakerloo', color: '#B16300', textColor: '#FFFFFF' },
-            'central': { name: 'Central', color: '#E32017', textColor: '#FFFFFF' },
-            'circle': { name: 'Circle', color: '#FFD300', textColor: '#111827' },
-            'district': { name: 'District', color: '#00782A', textColor: '#FFFFFF' },
-            'hammersmith-city': { name: 'Hammersmith & City', color: '#F4A9BE', textColor: '#111827' },
-            'jubilee': { name: 'Jubilee', color: '#A0A5A9', textColor: '#FFFFFF' },
-            'metropolitan': { name: 'Metropolitan', color: '#9B0056', textColor: '#FFFFFF' },
-            'northern': { name: 'Northern', color: '#000000', textColor: '#FFFFFF' },
-            'piccadilly': { name: 'Piccadilly', color: '#0019A8', textColor: '#FFFFFF' },
-            'victoria': { name: 'Victoria', color: '#0098D4', textColor: '#FFFFFF' },
-            'waterloo-city': { name: 'Waterloo & City', color: '#95CDBA', textColor: '#111827' }
-        };
+export const TFL_LINES = {
+    bakerloo: { name: 'Bakerloo' },
+    central: { name: 'Central' },
+    circle: { name: 'Circle' },
+    district: { name: 'District' },
+    'hammersmith-city': { name: 'Hammersmith & City' },
+    jubilee: { name: 'Jubilee' },
+    metropolitan: { name: 'Metropolitan' },
+    northern: { name: 'Northern' },
+    piccadilly: { name: 'Piccadilly' },
+    victoria: { name: 'Victoria' },
+    'waterloo-city': { name: 'Waterloo & City' }
+};
 
         // Station Nodes with TfL Naptan IDs for live arrivals querying
         export const LINE_STATION_NODES = {
