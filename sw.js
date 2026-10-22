@@ -1,5 +1,5 @@
-const CACHE_NAME = 'tfl-commuter-v3';
-const APP_SHELL = ['./', './index.html', './app.css', './app.js', './app-utils.mjs', './app-data.mjs', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'tfl-commuter-v4';
+const APP_SHELL = ['./', './index.html', './app.css?v=4', './app.js', './app-utils.mjs', './app-data.mjs', './manifest.webmanifest', './icon.svg'];
 const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
