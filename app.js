@@ -1,4 +1,4 @@
-import { escapeHtml, haversineDistance, isWithinCommuteWindow, nearestStation, normalizeJourneyOptions, normalizePreferences, normalizeTubeStations, sortLines } from './app-utils.mjs?v=7';
+import { escapeHtml, haversineDistance, isWithinCommuteWindow, nearestStation, normalizeJourneyOptions, normalizePreferences, normalizeTubeStations, sortLines } from './app-utils.mjs?v=9';
 import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
 
 // App State
@@ -827,6 +827,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
             if (userLocation.naptan) {
                 return {
                     id: userLocation.naptan,
+                    journeyRef: userLocation.naptan,
                     name: userLocation.name,
                     displayName: userLocation.name
                 };
@@ -835,8 +836,9 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
             if (!station) return null;
             return {
                 id: station.id,
+                journeyRef: `${userLocation.lat.toFixed(6)},${userLocation.lon.toFixed(6)}`,
                 name: station.name,
-                displayName: `${station.name} (nearest Tube station to ${userLocation.name})`
+                displayName: `${userLocation.name} (near ${station.name})`
             };
         }
 
@@ -875,7 +877,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
                     return;
                 }
                 if (requestId !== journeyRequestId) return;
-                const from = origin.id || `${userLocation.lat.toFixed(6)},${userLocation.lon.toFixed(6)}`;
+                const from = origin.journeyRef;
                 const to = destinationLocation.id
                     || `${destinationLocation.lat.toFixed(6)},${destinationLocation.lon.toFixed(6)}`;
                 const params = new URLSearchParams({
@@ -938,11 +940,18 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
                     const endpoints = leg.departure && leg.arrival
                         ? `<p class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">${escapeHtml(leg.departure)} <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i> ${escapeHtml(leg.arrival)}</p>`
                         : '';
+                    const walkingSteps = leg.walkingSteps.length
+                        ? `<ol class="mt-2 space-y-1 border-l-2 border-slate-200 dark:border-slate-700 pl-3" aria-label="Walking directions">${leg.walkingSteps.map(step => `
+                            <li class="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
+                                ${escapeHtml(step.description)}${step.distanceMeters > 0 ? ` <span class="text-slate-400">(${step.distanceMeters} m)</span>` : ''}
+                            </li>`).join('')}</ol>`
+                        : '';
                     return `
                         <li class="journey-leg flex items-start justify-between gap-3 text-xs">
                             <div class="min-w-0">
                                 <p class="font-medium text-slate-800 dark:text-slate-200">${escapeHtml(instruction)}</p>
                                 ${endpoints}
+                                ${walkingSteps}
                             </div>
                             <span class="shrink-0 text-slate-500 dark:text-slate-400">${leg.duration} min</span>
                         </li>`;
@@ -951,7 +960,8 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=7';
                     `<li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>${escapeHtml(description)}</span></li>`
                 ).join('');
                 const changeLabel = route.changes === 1 ? '1 change' : `${route.changes} changes`;
-                const walkingLabel = `${route.walkingMinutes} min walking`;
+                const walkingDistanceKm = route.walkingDistanceMeters / 1000;
+                const walkingLabel = `${route.walkingMinutes} min walking${walkingDistanceKm > 0 ? ` · ${(distanceUnit === 'miles' ? walkingDistanceKm * 0.621371 : walkingDistanceKm).toFixed(1)} ${distanceUnit === 'miles' ? 'mi' : 'km'} on foot` : ''}`;
 
                 return `
                     <article class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 p-3 sm:p-4">

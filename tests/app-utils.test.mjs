@@ -70,7 +70,14 @@ test('saved origin, unit and theme preferences are restored with safe defaults',
 
 test('journey options summarize Tube lines, transfers and disruptions and remove duplicates', () => {
     const legs = [
-        { mode: { name: 'walking' }, duration: 5, instruction: { summary: 'Walk to station' } },
+        {
+            mode: { name: 'walking' },
+            duration: 5,
+            instruction: {
+                summary: 'Walk to station',
+                steps: [{ description: 'Walk along High Street', distance: 425 }]
+            }
+        },
         {
             mode: { name: 'tube' },
             duration: 4,
@@ -102,6 +109,10 @@ test('journey options summarize Tube lines, transfers and disruptions and remove
     assert.deepEqual(routes[0].lines, ['Central', 'Jubilee']);
     assert.equal(routes[0].changes, 1);
     assert.equal(routes[0].walkingMinutes, 7);
+    assert.equal(routes[0].walkingDistanceMeters, 425);
+    assert.deepEqual(routes[0].legs[0].walkingSteps, [
+        { description: 'Walk along High Street', distanceMeters: 425 }
+    ]);
     assert.deepEqual(routes[0].disruptions, ['Central line has minor delays.']);
 });
 

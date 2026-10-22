@@ -100,6 +100,12 @@ export function normalizeJourneyOptions(journeys) {
                 departure: leg?.departurePoint?.commonName || '',
                 arrival: leg?.arrivalPoint?.commonName || '',
                 duration: Number.isFinite(leg?.duration) ? leg.duration : 0,
+                walkingSteps: mode === 'walking' && Array.isArray(leg?.instruction?.steps)
+                    ? leg.instruction.steps.map(step => ({
+                        description: step?.description || '',
+                        distanceMeters: Number.isFinite(step?.distance) ? step.distance : 0
+                    })).filter(step => step.description)
+                    : [],
                 disruptions: Array.isArray(leg?.disruptions)
                     ? leg.disruptions.map(disruption => disruption?.description).filter(Boolean)
                     : []
@@ -126,6 +132,8 @@ export function normalizeJourneyOptions(journeys) {
             lines,
             changes: Math.max(0, lines.length - 1),
             walkingMinutes: legs.filter(leg => leg.mode === 'walking').reduce((total, leg) => total + leg.duration, 0),
+            walkingDistanceMeters: legs.flatMap(leg => leg.walkingSteps)
+                .reduce((total, step) => total + step.distanceMeters, 0),
             disruptions: [...new Set(legs.flatMap(leg => leg.disruptions))]
         });
     });
