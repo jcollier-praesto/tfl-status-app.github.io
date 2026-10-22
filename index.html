@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Live London Underground line status, nearby stations and arrivals.">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
     <title>London Tube Live Status & Arrivals</title>
 
     <!-- Tailwind CSS CDN -->
@@ -42,62 +45,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.4);
-            border-radius: 9999px;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        .dark .glass-card {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        .pulse-glow-red {
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(227, 32, 23, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(227, 32, 23, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(227, 32, 23, 0); }
-        }
-        .pulse-glow-amber {
-            animation: pulse-amber 2s infinite;
-        }
-        @keyframes pulse-amber {
-            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-            animation: fadeIn 0.25s ease-out forwards;
-        }
-    </style>
+    <link rel="stylesheet" href="app.css">
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col antialiased selection:bg-blue-500 selection:text-white">
 
     <!-- Offline Notification Banner -->
-    <div id="offline-banner" class="hidden bg-amber-600 text-white text-xs font-semibold py-1.5 px-4 text-center sticky top-0 z-50 flex items-center justify-center space-x-2">
+    <div id="offline-banner" role="status" aria-live="polite" class="hidden bg-amber-600 text-white text-xs font-semibold py-1.5 px-4 text-center sticky top-0 z-50 flex items-center justify-center space-x-2">
         <i class="fa-solid fa-wifi"></i>
-        <span>Offline Mode Enabled — Showing cached TfL tube statuses. Live arrivals may be unavailable.</span>
+        <span>Offline mode — live data may be unavailable; cached status includes its last-updated time.</span>
     </div>
 
     <!-- Header Navigation -->
@@ -119,20 +74,20 @@
 
             <div class="flex items-center space-x-2 sm:space-x-3">
                 <!-- Alarm / Commute Alert Modal Trigger -->
-                <button onclick="openAlertModal()" title="Commute Notification Alerts"
+                <button id="alert-open-btn" onclick="openAlertModal()" title="Commute Notification Alerts" aria-label="Commute notification alerts"
                         class="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <i class="fa-solid fa-bell text-sm"></i>
                     <span id="alert-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500"></span>
                 </button>
 
                 <!-- Refresh Button -->
-                <button id="refresh-btn" onclick="fetchTubeStatuses(false)" title="Refresh Status" 
+                <button id="refresh-btn" onclick="fetchTubeStatuses(false)" title="Refresh Status" aria-label="Refresh line status"
                         class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <i id="refresh-icon" class="fa-solid fa-arrows-rotate text-sm"></i>
                 </button>
 
                 <!-- Dark/Light Theme Toggle -->
-                <button id="theme-toggle" onclick="toggleTheme()" title="Toggle Theme"
+                <button id="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle color theme" aria-pressed="true"
                         class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
                 </button>
@@ -200,13 +155,14 @@
                 <div class="flex items-center space-x-3">
                     <!-- Distance Unit Switcher -->
                     <div class="inline-flex rounded-lg p-0.5 bg-slate-200/70 dark:bg-slate-800">
-                        <button onclick="setDistanceUnit('km')" id="unit-km" class="px-2.5 py-1 rounded-md text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs">km</button>
-                        <button onclick="setDistanceUnit('miles')" id="unit-miles" class="px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">mi</button>
+                        <button type="button" onclick="setDistanceUnit('km')" id="unit-km" aria-pressed="true" class="px-2.5 py-1 rounded-md text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs">km</button>
+                        <button type="button" onclick="setDistanceUnit('miles')" id="unit-miles" aria-pressed="false" class="px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">mi</button>
                     </div>
 
                     <!-- Sorting Options -->
                     <div class="flex items-center space-x-1">
                         <i class="fa-solid fa-arrow-down-short-wide text-slate-400"></i>
+                        <label for="sort-select" class="sr-only">Sort Tube lines</label>
                         <select id="sort-select" onchange="renderTubeCards()" class="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer">
                             <option value="favorites" class="dark:bg-slate-900">Starred First</option>
                             <option value="proximity" class="dark:bg-slate-900">Sort by Proximity</option>
@@ -215,6 +171,11 @@
                         </select>
                     </div>
                 </div>
+            </div>
+            <div class="pt-2">
+                <label for="line-filter" class="sr-only">Filter Tube lines</label>
+                <input id="line-filter" type="search" oninput="renderTubeCards()" placeholder="Filter lines by name or status..."
+                       class="w-full sm:max-w-xs px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
             </div>
         </section>
 
@@ -233,12 +194,12 @@
         </section>
 
         <!-- Status Summary Bar -->
-        <section id="status-summary" class="flex flex-wrap items-center justify-between gap-2 text-xs font-medium px-1 text-slate-500 dark:text-slate-400">
+        <section id="status-summary" role="status" aria-live="polite" class="flex flex-wrap items-center justify-between gap-2 text-xs font-medium px-1 text-slate-500 dark:text-slate-400">
             <div class="flex items-center space-x-2">
-                <span id="disruption-badge-count" class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">
+                <span id="disruption-badge-count" role="status" aria-live="polite" class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">
                     Checking status...
                 </span>
-                <span id="last-updated-text">Updating...</span>
+                <span id="last-updated-text" aria-live="off">Updating...</span>
             </div>
             <div id="refresh-timer-badge" class="text-slate-400 flex items-center space-x-1">
                 <i class="fa-solid fa-clock-rotate-left"></i>
@@ -258,20 +219,21 @@
     </main>
 
     <!-- Commute Alert / Notifications Modal -->
-    <div id="alert-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+    <div id="alert-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-describedby="alert-modal-description" tabindex="-1">
         <div class="glass-card max-w-md w-full rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
             <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-bell text-blue-500"></i>
-                    <h3 class="font-bold text-base text-slate-900 dark:text-white">Smart Commute Alerts</h3>
+                    <h3 id="alert-modal-title" class="font-bold text-base text-slate-900 dark:text-white">Smart Commute Alerts</h3>
                 </div>
-                <button onclick="closeAlertModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <button onclick="closeAlertModal()" aria-label="Close commute alert settings" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p id="alert-modal-description" class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 Receive instant browser notifications if any of your <strong>starred/pinned lines</strong> experience delays or suspensions during your commute window.
+                Alerts are checked while this page is open, within 30 minutes of either saved commute time.
             </p>
 
             <div class="space-y-3">
@@ -284,11 +246,11 @@
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Morning Commute</label>
+                        <label for="commute-morning-start" class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Morning Commute</label>
                         <input type="time" id="commute-morning-start" value="07:30" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Evening Commute</label>
+                        <label for="commute-evening-start" class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Evening Commute</label>
                         <input type="time" id="commute-evening-start" value="17:00" class="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200">
                     </div>
                 </div>
@@ -304,804 +266,12 @@
     <!-- Footer -->
     <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1">
         <p>Powered by official TfL Open Data API &bull; Live Station Countdown Timers</p>
-        <p class="text-[11px] text-slate-400 dark:text-slate-500">Offline PWA enabled. Live arrival predictions calculated using TfL StopPoint API.</p>
+        <p class="text-[11px] text-slate-400 dark:text-slate-500">Installable offline app. Nearby station distances are straight-line approximations; walking routes are not calculated.</p>
     </footer>
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="false" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Application JavaScript -->
-    <script>
-        // Official TfL Line Branding Meta
-        const TFL_LINES = {
-            'bakerloo': { name: 'Bakerloo', color: '#B16300', textColor: '#FFFFFF' },
-            'central': { name: 'Central', color: '#E32017', textColor: '#FFFFFF' },
-            'circle': { name: 'Circle', color: '#FFD300', textColor: '#111827' },
-            'district': { name: 'District', color: '#00782A', textColor: '#FFFFFF' },
-            'hammersmith-city': { name: 'Hammersmith & City', color: '#F4A9BE', textColor: '#111827' },
-            'jubilee': { name: 'Jubilee', color: '#A0A5A9', textColor: '#FFFFFF' },
-            'metropolitan': { name: 'Metropolitan', color: '#9B0056', textColor: '#FFFFFF' },
-            'northern': { name: 'Northern', color: '#000000', textColor: '#FFFFFF' },
-            'piccadilly': { name: 'Piccadilly', color: '#0019A8', textColor: '#FFFFFF' },
-            'victoria': { name: 'Victoria', color: '#0098D4', textColor: '#FFFFFF' },
-            'waterloo-city': { name: 'Waterloo & City', color: '#95CDBA', textColor: '#111827' }
-        };
-
-        // Station Nodes with TfL Naptan IDs for live arrivals querying
-        const LINE_STATION_NODES = {
-            'bakerloo': [
-                { name: 'Paddington', naptan: '940GZZLUPAD', lat: 51.5154, lon: -0.1755 },
-                { name: 'Baker Street', naptan: '940GZZLUBST', lat: 51.5226, lon: -0.1571 },
-                { name: 'Oxford Circus', naptan: '940GZZLUOXC', lat: 51.5150, lon: -0.1415 },
-                { name: 'Waterloo', naptan: '940GZZLUWLO', lat: 51.5031, lon: -0.1132 },
-                { name: 'Elephant & Castle', naptan: '940GZZLUELE', lat: 51.4945, lon: -0.1006 }
-            ],
-            'central': [
-                { name: 'Ealing Broadway', naptan: '940GZZLUEAB', lat: 51.5150, lon: -0.3017 },
-                { name: 'Notting Hill Gate', naptan: '940GZZLUNHG', lat: 51.5091, lon: -0.1961 },
-                { name: 'Oxford Circus', naptan: '940GZZLUOXC', lat: 51.5150, lon: -0.1415 },
-                { name: 'Bank', naptan: '940GZZLUBNK', lat: 51.5133, lon: -0.0890 },
-                { name: 'Stratford', naptan: '940GZZLUSTD', lat: 51.5416, lon: -0.0034 }
-            ],
-            'circle': [
-                { name: 'Paddington', naptan: '940GZZLUPAD', lat: 51.5154, lon: -0.1755 },
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 },
-                { name: 'Tower Hill', naptan: '940GZZLUTWH', lat: 51.5098, lon: -0.0766 },
-                { name: 'Victoria', naptan: '940GZZLUVIC', lat: 51.4965, lon: -0.1447 }
-            ],
-            'district': [
-                { name: 'Richmond', naptan: '940GZZLURMD', lat: 51.4632, lon: -0.3013 },
-                { name: 'Earl\'s Court', naptan: '940GZZLUECT', lat: 51.4920, lon: -0.1931 },
-                { name: 'Westminster', naptan: '940GZZLUWMS', lat: 51.5014, lon: -0.1248 },
-                { name: 'Monument', naptan: '940GZZLUMON', lat: 51.5107, lon: -0.0863 },
-                { name: 'Barking', naptan: '940GZZLUBKG', lat: 51.5396, lon: 0.0810 }
-            ],
-            'hammersmith-city': [
-                { name: 'Hammersmith', naptan: '940GZZLUHMD', lat: 51.4936, lon: -0.2251 },
-                { name: 'Baker Street', naptan: '940GZZLUBST', lat: 51.5226, lon: -0.1571 },
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 },
-                { name: 'Liverpool Street', naptan: '940GZZLULVT', lat: 51.5178, lon: -0.0823 }
-            ],
-            'jubilee': [
-                { name: 'Wembley Park', naptan: '940GZZLUWYP', lat: 51.5635, lon: -0.2796 },
-                { name: 'Baker Street', naptan: '940GZZLUBST', lat: 51.5226, lon: -0.1571 },
-                { name: 'London Bridge', naptan: '940GZZLULBG', lat: 51.5048, lon: -0.0860 },
-                { name: 'Canary Wharf', naptan: '940GZZLUCWY', lat: 51.5039, lon: -0.0187 },
-                { name: 'Stratford', naptan: '940GZZLUSTD', lat: 51.5416, lon: -0.0034 }
-            ],
-            'metropolitan': [
-                { name: 'Harrow-on-the-Hill', naptan: '940GZZLUHOH', lat: 51.5793, lon: -0.3365 },
-                { name: 'Baker Street', naptan: '940GZZLUBST', lat: 51.5226, lon: -0.1571 },
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 },
-                { name: 'Aldgate', naptan: '940GZZLUALD', lat: 51.5143, lon: -0.0757 }
-            ],
-            'northern': [
-                { name: 'Camden Town', naptan: '940GZZLUCTN', lat: 51.5392, lon: -0.1426 },
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 },
-                { name: 'Waterloo', naptan: '940GZZLUWLO', lat: 51.5031, lon: -0.1132 },
-                { name: 'London Bridge', naptan: '940GZZLULBG', lat: 51.5048, lon: -0.0860 }
-            ],
-            'piccadilly': [
-                { name: 'Heathrow Airport', naptan: '940GZZLUHRC', lat: 51.4713, lon: -0.4527 },
-                { name: 'South Kensington', naptan: '940GZZLUSSK', lat: 51.4941, lon: -0.1738 },
-                { name: 'Piccadilly Circus', naptan: '940GZZLUPCC', lat: 51.5100, lon: -0.1342 },
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 }
-            ],
-            'victoria': [
-                { name: 'King\'s Cross St. Pancras', naptan: '940GZZLUKSX', lat: 51.5308, lon: -0.1238 },
-                { name: 'Oxford Circus', naptan: '940GZZLUOXC', lat: 51.5150, lon: -0.1415 },
-                { name: 'Victoria', naptan: '940GZZLUVIC', lat: 51.4965, lon: -0.1447 },
-                { name: 'Brixton', naptan: '940GZZLUBRX', lat: 51.4626, lon: -0.1149 }
-            ],
-            'waterloo-city': [
-                { name: 'Waterloo', naptan: '940GZZLUWLO', lat: 51.5031, lon: -0.1132 },
-                { name: 'Bank', naptan: '940GZZLUBNK', lat: 51.5133, lon: -0.0890 }
-            ]
-        };
-
-        // App State
-        let tubeDataRaw = [];
-        let userLocation = {
-            lat: 51.5074,
-            lon: -0.1278,
-            name: 'Central London (Default)'
-        };
-        let pinnedLines = new Set(JSON.parse(localStorage.getItem('tfl_pinned_lines') || '["victoria", "northern"]'));
-        let distanceUnit = 'km';
-        let expandedArrivals = new Set();
-        let expandedDisruptions = new Set();
-        let liveArrivalsCache = {};
-        let refreshCountdownVal = 60;
-        let countdownTimer = null;
-
-        // Initialize Application & Service Worker
-        window.addEventListener('DOMContentLoaded', () => {
-            initTheme();
-            registerServiceWorker();
-            fetchTubeStatuses();
-            startRefreshTimer();
-            checkCommuteAlerts();
-        });
-
-        // Feature 3: Register Dynamic Blob Service Worker for Offline Caching & PWA Support
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    const CACHE_NAME = 'tfl-pwa-v2';
-                    self.addEventListener('install', e => {
-                        self.skipWaiting();
-                    });
-                    self.addEventListener('fetch', e => {
-                        if (e.request.url.includes('api.tfl.gov.uk')) {
-                            e.respondWith(
-                                fetch(e.request).then(response => {
-                                    const cloned = response.clone();
-                                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, cloned));
-                                    return response;
-                                }).catch(() => caches.match(e.request))
-                            );
-                        } else {
-                            e.respondWith(
-                                fetch(e.request).catch(() => caches.match(e.request))
-                            );
-                        }
-                    });
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                const blobUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(blobUrl).catch(err => console.log('SW registration skipped:', err));
-            }
-
-            window.addEventListener('offline', () => {
-                document.getElementById('offline-banner').classList.remove('hidden');
-                showToast('Switched to Offline Mode', 'error');
-            });
-            window.addEventListener('online', () => {
-                document.getElementById('offline-banner').classList.add('hidden');
-                showToast('Back Online! Refreshing data...', 'success');
-                fetchTubeStatuses();
-            });
-        }
-
-        // Timer for Auto Refresh Countdown
-        function startRefreshTimer() {
-            clearInterval(countdownTimer);
-            refreshCountdownVal = 60;
-            countdownTimer = setInterval(() => {
-                refreshCountdownVal--;
-                const el = document.getElementById('refresh-countdown');
-                if (el) el.innerText = refreshCountdownVal;
-
-                if (refreshCountdownVal <= 0) {
-                    fetchTubeStatuses(true);
-                    refreshCountdownVal = 60;
-                }
-            }, 1000);
-        }
-
-        // Fetch TfL Statuses with Offline Fallback
-        async function fetchTubeStatuses(silent = false) {
-            const refreshIcon = document.getElementById('refresh-icon');
-            if (!silent && refreshIcon) refreshIcon.classList.add('fa-spin');
-
-            try {
-                const response = await fetch('https://api.tfl.gov.uk/Line/Mode/tube/Status');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                tubeDataRaw = await response.json();
-                
-                // Cache to LocalStorage for emergency offline access
-                localStorage.setItem('tfl_status_cache', JSON.stringify({
-                    timestamp: new Date().getTime(),
-                    data: tubeDataRaw
-                }));
-
-                updateLastUpdatedLabel(new Date());
-                renderTubeCards();
-                renderPinnedWidget();
-                checkCommuteAlerts();
-            } catch (error) {
-                console.warn('Network error, attempting cache fallback:', error);
-                const cached = localStorage.getItem('tfl_status_cache');
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    tubeDataRaw = parsed.data;
-                    updateLastUpdatedLabel(new Date(parsed.timestamp), true);
-                    renderTubeCards();
-                    renderPinnedWidget();
-                    document.getElementById('offline-banner').classList.remove('hidden');
-                } else {
-                    showToast('Unable to fetch tube statuses.', 'error');
-                }
-            } fontFinally: {
-                if (refreshIcon) refreshIcon.classList.remove('fa-spin');
-            }
-        }
-
-        function updateLastUpdatedLabel(date, isCached = false) {
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById('last-updated-text').innerText = `${isCached ? 'Cached' : 'Updated'} ${timeStr}`;
-        }
-
-        // Feature 1: STATION-LEVEL REAL-TIME ARRIVALS (Live Countdown Clocks)
-        async function fetchStationArrivals(lineId, naptanId, containerId) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            container.innerHTML = `<div class="p-3 text-center text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Fetching live train countdowns...</div>`;
-
-            try {
-                const res = await fetch(`https://api.tfl.gov.uk/StopPoint/${naptanId}/Arrivals`);
-                if (!res.ok) throw new Error('Arrivals API unavailable');
-                
-                const arrivals = await res.json();
-                
-                // Filter for this line and sort by time to station (seconds)
-                const lineArrivals = arrivals
-                    .filter(a => a.lineId === lineId)
-                    .sort((a, b) => a.timeToStation - b.timeToStation)
-                    .slice(0, 5); // Take top 5 upcoming
-
-                if (!lineArrivals.length) {
-                    container.innerHTML = `<div class="p-3 text-center text-xs text-slate-400">No upcoming trains scheduled at this time.</div>`;
-                    return;
-                }
-
-                container.innerHTML = `
-                    <div class="space-y-1.5 animate-fadeIn">
-                        <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1">
-                            <span>Destination & Platform</span>
-                            <span>Arrival</span>
-                        </div>
-                        ${lineArrivals.map(arr => {
-                            const mins = Math.floor(arr.timeToStation / 60);
-                            const timeDisplay = mins <= 0 ? '<span class="text-emerald-500 font-bold animate-pulse">Due Now</span>' : `<span class="font-bold text-slate-900 dark:text-white">${mins} mins</span>`;
-                            const platform = arr.platformName ? arr.platformName.replace('Underground - Platform ', 'P') : 'Platform';
-
-                            return `
-                                <div class="flex items-center justify-between text-xs py-1 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 rounded-lg px-2 transition-colors">
-                                    <div class="truncate max-w-[70%]">
-                                        <div class="font-medium text-slate-800 dark:text-slate-200 truncate">${arr.destinationName || 'In Service'}</div>
-                                        <div class="text-[10px] text-slate-400">${platform}</div>
-                                    </div>
-                                    <div class="text-right">${timeDisplay}</div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-            } catch (err) {
-                console.error('Arrivals error:', err);
-                container.innerHTML = `<div class="p-3 text-center text-xs text-red-400">Live arrivals temporary unavailable.</div>`;
-            }
-        }
-
-        // Toggle Live Arrivals Drawer
-        function toggleArrivals(lineId, naptanId) {
-            const key = `${lineId}_${naptanId}`;
-            if (expandedArrivals.has(key)) {
-                expandedArrivals.delete(key);
-            } else {
-                expandedArrivals.add(key);
-            }
-            renderTubeCards();
-            if (expandedArrivals.has(key)) {
-                fetchStationArrivals(lineId, naptanId, `arrivals-${key}`);
-            }
-        }
-
-        // Feature 2: LINE PINNING & FAVORITES
-        function togglePinLine(lineId) {
-            if (pinnedLines.has(lineId)) {
-                pinnedLines.delete(lineId);
-                showToast(`Removed from pinned lines`, 'info');
-            } else {
-                pinnedLines.add(lineId);
-                showToast(`Pinned line to daily commute`, 'success');
-            }
-            localStorage.setItem('tfl_pinned_lines', JSON.stringify([...pinnedLines]));
-            renderTubeCards();
-            renderPinnedWidget();
-        }
-
-        // Render Pinned Quick Glance Widget Bar
-        function renderPinnedWidget() {
-            const widget = document.getElementById('pinned-widget');
-            const container = document.getElementById('pinned-chips-container');
-
-            if (!pinnedLines.size || !tubeDataRaw.length) {
-                widget.classList.add('hidden');
-                return;
-            }
-
-            widget.classList.remove('hidden');
-
-            const pinnedItems = tubeDataRaw.filter(l => pinnedLines.has(l.id));
-            container.innerHTML = pinnedItems.map(line => {
-                const meta = TFL_LINES[line.id] || { color: '#000000' };
-                const statusObj = line.lineStatuses && line.lineStatuses[0] ? line.lineStatuses[0] : {};
-                const isGood = (statusObj.statusSeverity === 10);
-                const statusName = statusObj.statusSeverityDescription || 'Good Service';
-
-                return `
-                    <div onclick="scrollToLineCard('${line.id}')" class="cursor-pointer inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs">
-                        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${meta.color};"></span>
-                        <span class="text-xs font-bold text-slate-800 dark:text-slate-100">${line.name}</span>
-                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${isGood ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'}">
-                            ${statusName}
-                        </span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function scrollToLineCard(lineId) {
-            const el = document.getElementById(`card-${lineId}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('ring-2', 'ring-blue-500');
-                setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000);
-            }
-        }
-
-        // Distance & Proximity Calculations
-        function calculateLineProximity(lineId) {
-            const nodes = LINE_STATION_NODES[lineId] || [];
-            if (!nodes.length) return { distanceKm: 999, nearestNode: { name: 'Unknown', naptan: '' } };
-
-            let minDist = Infinity;
-            let nearest = nodes[0];
-
-            nodes.forEach(node => {
-                const dist = haversineDistance(userLocation.lat, userLocation.lon, node.lat, node.lon);
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = node;
-                }
-            });
-
-            return {
-                distanceKm: minDist,
-                nearestNode: nearest
-            };
-        }
-
-        function haversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        }
-
-        // Feature 5: ALTERNATIVE ROUTE & ADJACENT LINE SUGGESTIONS
-        function generateAlternativeAdvice(disruptedLine, proximity) {
-            // Find non-disrupted lines
-            const operationalLines = tubeDataRaw.filter(l => {
-                if (l.id === disruptedLine.id) return false;
-                const status = l.lineStatuses && l.lineStatuses[0] ? l.lineStatuses[0].statusSeverity : 10;
-                return status === 10;
-            });
-
-            if (!operationalLines.length) return null;
-
-            // Sort operational lines by distance to user
-            const alternative = operationalLines.map(l => ({
-                line: l,
-                prox: calculateLineProximity(l.id)
-            })).sort((a, b) => a.prox.distanceKm - b.prox.distanceKm)[0];
-
-            if (!alternative) return null;
-
-            const altMeta = TFL_LINES[alternative.line.id];
-            const distMin = Math.max(1, Math.round(alternative.prox.distanceKm * 12)); // ~12 min per km walk
-
-            return {
-                altLineName: alternative.line.name,
-                altStation: alternative.prox.nearestNode.name,
-                color: altMeta ? altMeta.color : '#3b82f6',
-                walkMins: distMin
-            };
-        }
-
-        // Render Cards Grid
-        function renderTubeCards() {
-            const container = document.getElementById('cards-container');
-            if (!tubeDataRaw || !tubeDataRaw.length) return;
-
-            const sortBy = document.getElementById('sort-select').value;
-
-            // Process lines
-            let lines = tubeDataRaw.map(line => {
-                const proximity = calculateLineProximity(line.id);
-                const statusObj = line.lineStatuses && line.lineStatuses[0] ? line.lineStatuses[0] : {};
-                const statusSeverity = statusObj.statusSeverity !== undefined ? statusObj.statusSeverity : 10;
-                const statusDescription = statusObj.statusSeverityDescription || 'Good Service';
-                const reason = statusObj.reason || null;
-                const isPinned = pinnedLines.has(line.id);
-
-                return {
-                    id: line.id,
-                    name: line.name,
-                    statusDescription: statusDescription,
-                    statusSeverity: statusSeverity,
-                    reason: reason,
-                    distanceKm: proximity.distanceKm,
-                    nearestNode: proximity.nearestNode,
-                    isPinned: isPinned,
-                    meta: TFL_LINES[line.id] || { color: '#000000', textColor: '#FFFFFF' }
-                };
-            });
-
-            // Disruption counter
-            const disruptedCount = lines.filter(l => l.statusSeverity !== 10).length;
-            const countBadge = document.getElementById('disruption-badge-count');
-            if (disruptedCount === 0) {
-                countBadge.className = "px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800";
-                countBadge.innerHTML = `<i class="fa-solid fa-circle-check mr-1 text-xs"></i> Good Service on All Lines`;
-            } else {
-                countBadge.className = "px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-800";
-                countBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1 text-xs"></i> ${disruptedCount} ${disruptedCount === 1 ? 'Line Disrupted' : 'Lines Disrupted'}`;
-            }
-
-            // Apply Sort
-            if (sortBy === 'favorites') {
-                lines.sort((a, b) => (b.isPinned - a.isPinned) || (a.distanceKm - b.distanceKm));
-            } else if (sortBy === 'proximity') {
-                lines.sort((a, b) => a.distanceKm - b.distanceKm);
-            } else if (sortBy === 'status') {
-                lines.sort((a, b) => a.statusSeverity - b.statusSeverity);
-            } else if (sortBy === 'alphabetical') {
-                lines.sort((a, b) => a.name.localeCompare(b.name));
-            }
-
-            // Render Output
-            container.innerHTML = lines.map(line => {
-                const isGoodService = line.statusSeverity === 10;
-                const formattedDist = distanceUnit === 'miles' 
-                    ? `${(line.distanceKm * 0.621371).toFixed(1)} mi` 
-                    : `${line.distanceKm.toFixed(1)} km`;
-
-                const arrivalsKey = `${line.id}_${line.nearestNode.naptan}`;
-                const isArrivalsExpanded = expandedArrivals.has(arrivalsKey);
-                const isDisruptionExpanded = expandedDisruptions.has(line.id);
-
-                let statusBadgeStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-                let pulseClass = "";
-                
-                if (!isGoodService) {
-                    if (line.statusSeverity < 6) {
-                        statusBadgeStyle = "bg-red-100 text-red-800 dark:bg-red-950/90 dark:text-red-300 border-red-300 dark:border-red-800";
-                        pulseClass = "pulse-glow-red";
-                    } else {
-                        statusBadgeStyle = "bg-amber-100 text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 border-amber-300 dark:border-amber-800";
-                        pulseClass = "pulse-glow-amber";
-                    }
-                }
-
-                // Alternative Route Advice Generator
-                const altAdvice = !isGoodService ? generateAlternativeAdvice(line, line.distanceKm) : null;
-
-                return `
-                    <div id="card-${line.id}" class="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col">
-                        <!-- Card Banner Top -->
-                        <div class="h-2.5 w-full flex items-center justify-end px-3" style="background-color: ${line.meta.color};"></div>
-                        
-                        <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
-                            <div>
-                                <!-- Top Row: Line Name, Pin & Proximity -->
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="flex items-center space-x-2.5">
-                                        <button onclick="togglePinLine('${line.id}')" title="Star Line for Daily Commute" class="text-base focus:outline-none transition-transform active:scale-125">
-                                            <i class="fa-${line.isPinned ? 'solid text-amber-400' : 'regular text-slate-300 dark:text-slate-600 hover:text-amber-400'} fa-star"></i>
-                                        </button>
-                                        <div class="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-2xs" style="background-color: ${line.meta.color};"></div>
-                                        <h3 class="font-bold text-base text-slate-900 dark:text-white leading-tight">${line.name}</h3>
-                                    </div>
-
-                                    <div class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-semibold" title="Nearest node distance">
-                                        <i class="fa-solid fa-route text-slate-400 text-[10px]"></i>
-                                        <span>${formattedDist}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Station & Status Badge -->
-                                <div class="flex flex-wrap items-center justify-between gap-2 mt-3">
-                                    <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1">
-                                        <i class="fa-solid fa-train-subway text-slate-400"></i>
-                                        <span>Nearest: <strong class="text-slate-700 dark:text-slate-300 font-medium">${line.nearestNode.name}</strong></span>
-                                    </div>
-
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${statusBadgeStyle} ${pulseClass}">
-                                        ${isGoodService ? '<i class="fa-solid fa-circle-check mr-1.5 text-[10px]"></i>' : '<i class="fa-solid fa-circle-exclamation mr-1.5 text-[10px]"></i>'}
-                                        ${line.statusDescription}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Feature 1: Live Arrivals Toggle Button -->
-                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                                <button onclick="toggleArrivals('${line.id}', '${line.nearestNode.naptan}')" 
-                                        class="w-full flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 py-1 focus:outline-none">
-                                    <span class="flex items-center space-x-1.5">
-                                        <i class="fa-solid fa-clock text-blue-500"></i>
-                                        <span>Live Arrivals at ${line.nearestNode.name}</span>
-                                    </span>
-                                    <i class="fa-solid ${isArrivalsExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs"></i>
-                                </button>
-
-                                ${isArrivalsExpanded ? `
-                                    <div id="arrivals-${arrivalsKey}" class="mt-2.5 p-3 rounded-xl bg-slate-100/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800">
-                                        <!-- Arrivals loaded asynchronously -->
-                                    </div>
-                                ` : ''}
-                            </div>
-
-                            <!-- Disruption Details & Alternative Route Advice (If Disrupted) -->
-                            ${line.reason ? `
-                                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
-                                    <button onclick="toggleDisruption('${line.id}')" 
-                                            class="w-full flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-medium focus:outline-none">
-                                        <span class="flex items-center space-x-1">
-                                            <i class="fa-solid fa-triangle-exclamation"></i>
-                                            <span>Disruption Reason & Advice</span>
-                                        </span>
-                                        <i class="fa-solid ${isDisruptionExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs"></i>
-                                    </button>
-
-                                    ${isDisruptionExpanded ? `
-                                        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-slate-700 dark:text-slate-300 space-y-2 animate-fadeIn">
-                                            <p class="leading-relaxed">${line.reason}</p>
-
-                                            <!-- Feature 5: Smart Alternative Suggestion -->
-                                            ${altAdvice ? `
-                                                <div class="mt-2 pt-2 border-t border-amber-500/20 text-[11px] font-medium text-slate-800 dark:text-slate-200 flex items-start space-x-2">
-                                                    <i class="fa-solid fa-person-walking text-blue-500 mt-0.5"></i>
-                                                    <div>
-                                                        <span class="font-bold">Smart Alternative:</span> Consider walking ~${altAdvice.walkMins} mins to <strong>${altAdvice.altStation}</strong> for the <strong>${altAdvice.altLineName} Line</strong> (Good Service).
-                                                    </div>
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Automatically trigger load for open arrivals drawers
-            expandedArrivals.forEach(key => {
-                const [lineId, naptanId] = key.split('_');
-                fetchStationArrivals(lineId, naptanId, `arrivals-${key}`);
-            });
-        }
-
-        function toggleDisruption(lineId) {
-            if (expandedDisruptions.has(lineId)) {
-                expandedDisruptions.delete(lineId);
-            } else {
-                expandedDisruptions.add(lineId);
-            }
-            renderTubeCards();
-        }
-
-        // Location & Search Handlers
-        function useCurrentLocation() {
-            if (!navigator.geolocation) {
-                showToast('Geolocation is not supported by your browser.', 'error');
-                return;
-            }
-
-            const gpsBtn = document.getElementById('gps-btn');
-            gpsBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Locating...</span>`;
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    userLocation = {
-                        lat: pos.coords.latitude,
-                        lon: pos.coords.longitude,
-                        name: 'Your GPS Location'
-                    };
-
-                    document.getElementById('current-location-label').innerText = 'Your Current GPS Location';
-                    document.getElementById('hub-select').selectedIndex = 0;
-                    gpsBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> <span>Use My Location</span>`;
-                    
-                    showToast('Location updated via GPS', 'success');
-                    renderTubeCards();
-                },
-                (err) => {
-                    gpsBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> <span>Use My Location</span>`;
-                    showToast('Unable to retrieve location.', 'error');
-                },
-                { enableHighAccuracy: true, timeout: 8000 }
-            );
-        }
-
-        function handleHubSelect(val) {
-            if (!val) return;
-            const [lat, lon, naptan, name] = val.split(',');
-            userLocation = {
-                lat: parseFloat(lat),
-                lon: parseFloat(lon),
-                name: name
-            };
-
-            document.getElementById('current-location-label').innerText = name;
-            document.getElementById('search-input').value = '';
-            showToast(`Origin set to ${name}`, 'info');
-            renderTubeCards();
-        }
-
-        async function handleLocationSearch(e) {
-            e.preventDefault();
-            const query = document.getElementById('search-input').value.trim();
-            if (!query) return;
-
-            showToast(`Searching for "${query}"...`, 'info');
-
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', London, UK')}&limit=1`);
-                const results = await res.json();
-
-                if (results && results.length > 0) {
-                    const place = results[0];
-                    const name = place.display_name.split(',')[0];
-                    userLocation = {
-                        lat: parseFloat(place.lat),
-                        lon: parseFloat(place.lon),
-                        name: name
-                    };
-
-                    document.getElementById('current-location-label').innerText = name;
-                    document.getElementById('hub-select').selectedIndex = 0;
-                    showToast(`Origin set to ${name}`, 'success');
-                    renderTubeCards();
-                } else {
-                    showToast(`Location "${query}" not found.`, 'error');
-                }
-            } catch (err) {
-                showToast('Geocoding service unavailable.', 'error');
-            }
-        }
-
-        // Feature 4: SMART COMMUTE REMINDERS & NOTIFICATIONS
-        function openAlertModal() {
-            document.getElementById('alert-modal').classList.remove('hidden');
-        }
-
-        function closeAlertModal() {
-            document.getElementById('alert-modal').classList.add('hidden');
-        }
-
-        function requestNotificationPermission() {
-            if (!('Notification' in window)) {
-                showToast('Notifications not supported in this browser.', 'error');
-                return;
-            }
-
-            Notification.requestPermission().then(perm => {
-                if (perm === 'granted') {
-                    showToast('Notifications enabled!', 'success');
-                    document.getElementById('notif-perm-btn').innerText = 'Enabled';
-                    document.getElementById('notif-perm-btn').className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white';
-                } else {
-                    showToast('Notification permission denied.', 'error');
-                }
-            });
-        }
-
-        function saveAlertSettings() {
-            const morning = document.getElementById('commute-morning-start').value;
-            const evening = document.getElementById('commute-evening-start').value;
-
-            localStorage.setItem('tfl_alert_settings', JSON.stringify({ morning, evening }));
-            document.getElementById('alert-dot').classList.remove('hidden');
-            closeAlertModal();
-            showToast('Commute alert window saved!', 'success');
-        }
-
-        function checkCommuteAlerts() {
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
-
-            const settings = JSON.parse(localStorage.getItem('tfl_alert_settings') || 'null');
-            if (!settings || !pinnedLines.size || !tubeDataRaw.length) return;
-
-            // Check if current time falls near commute window
-            const now = new Date();
-            const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-            // Check for disrupted pinned lines
-            tubeDataRaw.forEach(line => {
-                if (pinnedLines.has(line.id)) {
-                    const status = line.lineStatuses && line.lineStatuses[0] ? line.lineStatuses[0].statusSeverity : 10;
-                    if (status !== 10) {
-                        const lastNotified = localStorage.getItem(`notified_${line.id}`);
-                        const tenMins = 10 * 60 * 1000;
-
-                        if (!lastNotified || (now.getTime() - parseInt(lastNotified)) > tenMins) {
-                            new Notification(`TfL Commute Alert: ${line.name} Line`, {
-                                body: `${line.lineStatuses[0].statusSeverityDescription}: ${line.lineStatuses[0].reason || 'Delays reported.'}`,
-                                icon: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png'
-                            });
-                            localStorage.setItem(`notified_${line.id}`, now.getTime().toString());
-                        }
-                    }
-                }
-            });
-        }
-
-        function setDistanceUnit(unit) {
-            distanceUnit = unit;
-            const btnKm = document.getElementById('unit-km');
-            const btnMiles = document.getElementById('unit-miles');
-
-            if (unit === 'km') {
-                btnKm.className = "px-2.5 py-1 rounded-md text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs";
-                btnMiles.className = "px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all";
-            } else {
-                btnMiles.className = "px-2.5 py-1 rounded-md text-xs font-semibold transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs";
-                btnKm.className = "px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all";
-            }
-
-            renderTubeCards();
-        }
-
-        function initTheme() {
-            if (localStorage.theme === 'light') {
-                document.documentElement.classList.remove('dark');
-                document.getElementById('theme-icon').className = 'fa-solid fa-moon text-sm';
-            } else {
-                document.documentElement.classList.add('dark');
-                document.getElementById('theme-icon').className = 'fa-solid fa-sun text-sm text-amber-400';
-            }
-        }
-
-        function toggleTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            const icon = document.getElementById('theme-icon');
-            if (isDark) {
-                localStorage.theme = 'dark';
-                icon.className = 'fa-solid fa-sun text-sm text-amber-400';
-            } else {
-                localStorage.theme = 'light';
-                icon.className = 'fa-solid fa-moon text-sm';
-            }
-        }
-
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            let bgStyle = 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900';
-            let icon = 'fa-info-circle text-blue-400';
-
-            if (type === 'error') {
-                bgStyle = 'bg-red-600 text-white';
-                icon = 'fa-circle-exclamation';
-            } else if (type === 'success') {
-                bgStyle = 'bg-emerald-600 text-white';
-                icon = 'fa-circle-check';
-            }
-
-            toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 ${bgStyle}`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
-
-            container.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            });
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
-        }
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
