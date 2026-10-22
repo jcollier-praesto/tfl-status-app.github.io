@@ -64,6 +64,10 @@ input:focus-visible {
     outline-offset: 2px;
 }
 
+.brand-title-compact {
+    display: none;
+}
+
 @media (max-width: 640px) {
     header .max-w-6xl {
         padding: 0.5rem 0.75rem;
@@ -75,6 +79,23 @@ input:focus-visible {
 
     header h1.text-lg {
         font-size: 1rem;
+    }
+
+    .header-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+    }
+
+    .header-title-row > span {
+        padding: 0 0.375rem;
+        line-height: 1rem;
+        margin-left: 0;
+        margin-top: 0.125rem;
+    }
+
+    .header-subtitle {
+        display: none;
     }
 
     header .max-w-6xl > .flex > .flex:last-child {
@@ -144,6 +165,14 @@ input:focus-visible {
 }
 
 @media (max-width: 360px) {
+    .brand-title-full {
+        display: none;
+    }
+
+    .brand-title-compact {
+        display: inline;
+    }
+
     header .max-w-6xl > .flex > .flex:first-child p {
         display: none;
     }
