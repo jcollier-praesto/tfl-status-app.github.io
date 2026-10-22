@@ -45,7 +45,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="app.css?v=4">
+    <link rel="stylesheet" href="app.css?v=6">
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col antialiased selection:bg-blue-500 selection:text-white">
 
@@ -182,6 +182,43 @@
             </div>
         </section>
 
+        <section id="journey-planner" class="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3" aria-labelledby="journey-planner-title">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="journey-planner-title" class="text-sm font-bold text-slate-900 dark:text-white">Plan a Tube journey</h2>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Get route options from your selected origin using TfL Journey Planner.</p>
+                </div>
+                <div class="hidden sm:block text-right text-xs text-slate-500 dark:text-slate-400">
+                    <span>From </span><strong id="journey-origin-label" class="text-slate-700 dark:text-slate-200">Central London (Default)</strong>
+                </div>
+            </div>
+
+            <form id="journey-form" onsubmit="handleJourneySearch(event)" class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+                <div>
+                    <label for="destination-input" class="sr-only">Destination station, postcode or place</label>
+                    <input id="destination-input" type="text" required autocomplete="off" placeholder="Destination station, postcode or place..."
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400">
+                </div>
+                <div>
+                    <label for="journey-preference" class="sr-only">Journey preference</label>
+                    <select id="journey-preference" onchange="handleJourneyPreferenceChange()" class="w-full h-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="LeastTime">Fastest</option>
+                        <option value="LeastInterchange">Fewest changes</option>
+                        <option value="LeastWalking">Less walking</option>
+                    </select>
+                </div>
+                <button id="journey-submit-btn" type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
+                    <i class="fa-solid fa-route"></i>
+                    <span>Find routes</span>
+                </button>
+            </form>
+            <div class="sm:hidden text-xs text-slate-500 dark:text-slate-400">
+                <span>From </span><strong id="journey-origin-label-mobile" class="text-slate-700 dark:text-slate-200">Central London (Default)</strong>
+            </div>
+
+            <section id="journey-results" class="hidden border-t border-slate-100 dark:border-slate-800 pt-3" role="status" aria-live="polite"></section>
+        </section>
+
         <!-- Feature 2 Widget: PINNED / DAILY COMMUTE QUICK-GLANCE SUMMARY BAR -->
         <section id="pinned-widget" class="hidden glass-card rounded-2xl p-4 border border-blue-500/30 dark:border-blue-500/20 shadow-xs">
             <div class="flex items-center justify-between mb-3">
@@ -275,6 +312,6 @@
     <!-- Toast Container -->
     <div id="toast-container" role="status" aria-live="polite" aria-atomic="false" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=6"></script>
 </body>
 </html>

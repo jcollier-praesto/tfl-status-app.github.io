@@ -1,11 +1,12 @@
-import { escapeHtml, haversineDistance, isWithinCommuteWindow, normalizePreferences, sortLines } from './app-utils.mjs';
-import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
+import { escapeHtml, haversineDistance, isWithinCommuteWindow, normalizeJourneyOptions, normalizePreferences, sortLines } from './app-utils.mjs?v=6';
+import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs?v=6';
 
 // App State
         let tubeDataRaw = [];
         const storedPreferences = normalizePreferences(readStoredJson('tfl_preferences', {}));
         const storedPinnedLines = readStoredJson('tfl_pinned_lines', ['victoria', 'northern']);
         let userLocation = storedPreferences.origin;
+        let destinationLocation = storedPreferences.destination;
         let pinnedLines = new Set(Array.isArray(storedPinnedLines)
             ? storedPinnedLines.filter(lineId => typeof lineId === 'string' && TFL_LINES[lineId])
             : ['victoria', 'northern']);
@@ -16,6 +17,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
         let liveArrivalsCache = {};
         let refreshCountdownVal = 60;
         let countdownTimer = null;
+        let journeyRequestId = 0;
 
         function readStoredJson(key, fallback) {
             try {
@@ -56,6 +58,7 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
         function savePreferences() {
             saveStoredValue('tfl_preferences', {
                 origin: userLocation,
+                destination: destinationLocation,
                 distanceUnit,
                 theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
             });
@@ -65,6 +68,11 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
         window.addEventListener('DOMContentLoaded', () => {
             initTheme();
             document.getElementById('current-location-label').innerText = userLocation.name;
+            updateJourneyOriginLabel();
+            if (destinationLocation) {
+                document.getElementById('destination-input').value = destinationLocation.name;
+                planJourney();
+            }
             setDistanceUnit(distanceUnit, false);
             loadAlertSettings();
             document.getElementById('offline-banner').classList.toggle('hidden', navigator.onLine);
@@ -646,9 +654,11 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
 
         function updateOrigin() {
             document.getElementById('current-location-label').innerText = userLocation.name;
+            updateJourneyOriginLabel();
             savePreferences();
             loadNearbyStations();
             renderTubeCards();
+            if (destinationLocation) planJourney();
         }
 
         async function handleLocationSearch(e) {
@@ -659,33 +669,202 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
             showToast(`Searching for "${query}"...`, 'info');
 
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', London, UK')}&limit=1`);
-                if (!res.ok) throw new Error(`Geocoding service returned HTTP ${res.status}`);
-                const results = await res.json();
-
-                if (results && results.length > 0) {
-                    const place = results[0];
-                    const name = place.display_name.split(',')[0];
-                    const lat = Number(place.lat);
-                    const lon = Number(place.lon);
-                    if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Geocoding service returned invalid coordinates.');
-                    userLocation = {
-                        lat,
-                        lon,
-                        name: name
-                    };
-
-                    document.getElementById('hub-select').selectedIndex = 0;
-                    document.getElementById('search-input').value = '';
-                    updateOrigin();
-                    showToast(`Origin set to ${name}`, 'success');
-                } else {
+                const place = await geocodeLondonLocation(query);
+                if (!place) {
                     showToast(`Location "${query}" not found.`, 'error');
+                    return;
                 }
+                userLocation = place;
+                document.getElementById('hub-select').selectedIndex = 0;
+                document.getElementById('search-input').value = '';
+                updateOrigin();
+                showToast(`Origin set to ${place.name}`, 'success');
             } catch (error) {
                 console.warn('Unable to search for location:', error);
                 showToast('Geocoding service unavailable.', 'error');
             }
+        }
+
+        async function geocodeLondonLocation(query) {
+            const params = new URLSearchParams({
+                format: 'jsonv2',
+                q: `${query}, London, UK`,
+                limit: '1'
+            });
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+            if (!response.ok) throw new Error(`Geocoding service returned HTTP ${response.status}`);
+            const results = await response.json();
+            if (!Array.isArray(results) || !results.length) return null;
+
+            const place = results[0];
+            const lat = Number(place.lat);
+            const lon = Number(place.lon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                throw new Error('Geocoding service returned invalid coordinates.');
+            }
+            return {
+                lat,
+                lon,
+                name: String(place.display_name || query).split(',')[0]
+            };
+        }
+
+        function updateJourneyOriginLabel() {
+            document.getElementById('journey-origin-label').textContent = userLocation.name;
+            document.getElementById('journey-origin-label-mobile').textContent = userLocation.name;
+            document.getElementById('journey-origin-label').title = userLocation.name;
+            document.getElementById('journey-origin-label-mobile').title = userLocation.name;
+        }
+
+        async function handleJourneySearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('destination-input').value.trim();
+            if (!query) return;
+
+            const button = document.getElementById('journey-submit-btn');
+            button.disabled = true;
+            button.querySelector('span').textContent = 'Finding destination...';
+            try {
+                const place = await geocodeLondonLocation(query);
+                if (!place) {
+                    renderJourneyMessage(`Destination "${query}" was not found. Try a Tube station, London postcode or nearby place.`, true);
+                    return;
+                }
+                destinationLocation = place;
+                document.getElementById('destination-input').value = place.name;
+                savePreferences();
+                await planJourney();
+            } catch (error) {
+                console.error('Unable to find journey destination:', error);
+                renderJourneyMessage('Could not search for that destination. Check your connection and try again.', true);
+            } finally {
+                button.disabled = false;
+                button.querySelector('span').textContent = 'Find routes';
+            }
+        }
+
+        function handleJourneyPreferenceChange() {
+            if (destinationLocation) planJourney();
+        }
+
+        async function planJourney() {
+            if (!destinationLocation) return;
+            const requestId = ++journeyRequestId;
+            const button = document.getElementById('journey-submit-btn');
+            const results = document.getElementById('journey-results');
+            const preference = document.getElementById('journey-preference').value;
+            const preferenceLabels = {
+                LeastTime: 'Fastest',
+                LeastInterchange: 'Fewest changes',
+                LeastWalking: 'Less walking'
+            };
+            button.disabled = true;
+            button.querySelector('span').textContent = 'Finding routes...';
+            renderJourneyMessage(`Finding Tube routes from ${userLocation.name} to ${destinationLocation.name}...`);
+
+            try {
+                const from = `${userLocation.lat.toFixed(6)},${userLocation.lon.toFixed(6)}`;
+                const to = `${destinationLocation.lat.toFixed(6)},${destinationLocation.lon.toFixed(6)}`;
+                const params = new URLSearchParams({
+                    mode: 'tube',
+                    journeyPreference: preference,
+                    includeAlternativeRoutes: 'true',
+                    useRealTimeLiveArrivals: 'true',
+                    applyHtmlMarkup: 'false',
+                    fromName: userLocation.name,
+                    toName: destinationLocation.name
+                });
+                const url = `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}?${params}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`TfL Journey Planner returned HTTP ${response.status}`);
+                const data = await response.json();
+                if (requestId !== journeyRequestId) return;
+
+                const routes = normalizeJourneyOptions(data.journeys);
+                if (!routes.length) {
+                    renderJourneyMessage(data.journeyPlannerError?.message
+                        || 'TfL did not return a Tube route for these locations. Try a nearby station or change your origin.', true);
+                    return;
+                }
+
+                if (preference === 'LeastInterchange') {
+                    routes.sort((a, b) => a.changes - b.changes || a.duration - b.duration);
+                } else if (preference === 'LeastWalking') {
+                    routes.sort((a, b) => a.walkingMinutes - b.walkingMinutes || a.duration - b.duration);
+                } else {
+                    routes.sort((a, b) => a.duration - b.duration);
+                }
+                renderJourneyOptions(routes.slice(0, 3), preferenceLabels[preference] || 'Recommended');
+            } catch (error) {
+                if (requestId !== journeyRequestId) return;
+                console.error('Unable to plan Tube journey:', error);
+                renderJourneyMessage('Could not load journey options from TfL. Check your connection and try again.', true);
+            } finally {
+                if (requestId === journeyRequestId) {
+                    button.disabled = false;
+                    button.querySelector('span').textContent = 'Find routes';
+                }
+            }
+        }
+
+        function renderJourneyMessage(message, isError = false) {
+            const results = document.getElementById('journey-results');
+            results.classList.remove('hidden');
+            results.innerHTML = `<p ${isError ? 'role="alert"' : ''} class="text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}">${escapeHtml(message)}</p>`;
+        }
+
+        function renderJourneyOptions(routes, preferenceLabel) {
+            const results = document.getElementById('journey-results');
+            const routeCards = routes.map((route, index) => {
+                const lineChips = route.lines.map(lineName => {
+                    const lineId = Object.keys(TFL_LINES).find(id => TFL_LINES[id].name === lineName);
+                    const line = lineId ? TFL_LINES[lineId] : null;
+                    return `<span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-bold" style="background-color:${line ? line.color : '#e2e8f0'};color:${line ? line.textColor : '#1e293b'}">${escapeHtml(lineName)} line</span>`;
+                }).join('');
+                const legs = route.legs.map(leg => {
+                    const modeLabel = leg.mode === 'tube' ? (leg.lineName ? `${leg.lineName} line` : 'Tube') : leg.mode;
+                    const instruction = leg.instruction || `${modeLabel}: ${leg.departure} to ${leg.arrival}`;
+                    const endpoints = leg.departure && leg.arrival
+                        ? `<p class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">${escapeHtml(leg.departure)} <i class="fa-solid fa-arrow-right mx-1 text-[9px]"></i> ${escapeHtml(leg.arrival)}</p>`
+                        : '';
+                    return `
+                        <li class="journey-leg flex items-start justify-between gap-3 text-xs">
+                            <div class="min-w-0">
+                                <p class="font-medium text-slate-800 dark:text-slate-200">${escapeHtml(instruction)}</p>
+                                ${endpoints}
+                            </div>
+                            <span class="shrink-0 text-slate-500 dark:text-slate-400">${leg.duration} min</span>
+                        </li>`;
+                }).join('');
+                const disruptions = route.disruptions.map(description =>
+                    `<li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>${escapeHtml(description)}</span></li>`
+                ).join('');
+                const changeLabel = route.changes === 1 ? '1 change' : `${route.changes} changes`;
+                const walkingLabel = `${route.walkingMinutes} min walking`;
+
+                return `
+                    <article class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 p-3 sm:p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Option ${index + 1}</h3>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">${index === 0 ? `${escapeHtml(preferenceLabel)} · ` : ''}${route.duration} min total · ${escapeHtml(changeLabel)} · ${escapeHtml(walkingLabel)}</p>
+                            </div>
+                            ${route.arrivalDateTime ? `<time class="text-xs font-semibold text-slate-600 dark:text-slate-300" datetime="${escapeHtml(route.arrivalDateTime)}">Arrives ${escapeHtml(new Date(route.arrivalDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</time>` : ''}
+                        </div>
+                        ${lineChips ? `<div class="mt-2 flex flex-wrap gap-1.5">${lineChips}</div>` : ''}
+                        <ol class="mt-3 space-y-2">${legs}</ol>
+                        ${disruptions ? `<ul class="mt-3 space-y-1.5 rounded-lg bg-amber-100/80 p-2.5 text-xs text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">${disruptions}</ul>` : ''}
+                    </article>`;
+            }).join('');
+            results.classList.remove('hidden');
+            results.innerHTML = `
+                <div class="space-y-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Routes: ${escapeHtml(userLocation.name)} to ${escapeHtml(destinationLocation.name)}</h3>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tube and walking options from TfL Journey Planner. Times and disruption details may change.</p>
+                    </div>
+                    <div class="grid gap-2.5">${routeCards}</div>
+                </div>`;
         }
 
         // Feature 4: SMART COMMUTE REMINDERS & NOTIFICATIONS
@@ -877,6 +1056,8 @@ import { LINE_STATION_NODES, TFL_LINES } from './app-data.mjs';
             closeAlertModal,
             fetchTubeStatuses,
             handleHubSelect,
+            handleJourneyPreferenceChange,
+            handleJourneySearch,
             handleLocationSearch,
             openAlertModal,
             renderTubeCards,

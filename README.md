@@ -1,6 +1,6 @@
 # Tube Commuter Pro
 
-A static web app for London Underground service status, nearby stations and live arrivals, powered by the TfL Open Data API.
+A static web app for London Underground service status, nearby stations, live arrivals and Tube journey planning, powered by the TfL Open Data API.
 
 ## Run locally
 
@@ -20,7 +20,7 @@ The app uses relative asset, manifest, and service-worker URLs, so it works both
 
 ## Tests
 
-The core distance, commute-window, preference, sorting and HTML-escaping utilities are tested with Node's built-in test runner:
+The distance, commute-window, preference, journey summary, sorting and HTML-escaping utilities are tested with Node's built-in test runner:
 
 ```sh
 npm test
@@ -28,8 +28,8 @@ npm test
 
 ## Offline behavior
 
-After the first online visit, the service worker caches the app shell, external UI assets and successful TfL API responses. Cached service status is labeled with its cache time; live arrivals and location search still require connectivity. The browser must support service workers, and the app must be served from HTTPS or localhost.
+After the first online visit, the service worker caches the app shell, external UI assets and successful TfL API responses. Cached service status is labeled with its cache time; live arrivals, location search and journey planning require connectivity. The browser must support service workers, and the app must be served from HTTPS or localhost.
 
 Commute notifications are checked while the app page is open, during the 30 minutes before or after either saved commute time. Browser notifications do not run as background push notifications after the app is closed.
 
-Nearby station distances are straight-line approximations. The app does not provide walking directions or journey routing.
+Nearby station distances are straight-line approximations. Journey options use TfL Journey Planner and can include walking legs, Tube lines, transfer counts and reported disruptions. Destination searches are geocoded by OpenStreetMap Nominatim; journey coordinates are then sent to TfL.

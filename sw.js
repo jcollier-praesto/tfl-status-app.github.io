@@ -1,5 +1,5 @@
-const CACHE_NAME = 'tfl-commuter-v4';
-const APP_SHELL = ['./', './index.html', './app.css?v=4', './app.js', './app-utils.mjs', './app-data.mjs', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'tfl-commuter-v6';
+const APP_SHELL = ['./', './index.html', './app.css?v=6', './app.js?v=6', './app-utils.mjs?v=6', './app-data.mjs?v=6', './manifest.webmanifest', './icon.svg'];
 const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
@@ -73,10 +73,11 @@ self.addEventListener('fetch', event => {
     }
 
     if (requestUrl.hostname === 'api.tfl.gov.uk') {
+        const isJourneyRequest = requestUrl.pathname.includes('/Journey/JourneyResults/');
         event.respondWith(
             fetch(event.request)
                 .then(async response => {
-                    if (response.ok) {
+                    if (response.ok && !isJourneyRequest) {
                         const body = await response.clone().arrayBuffer();
                         const headers = new Headers(response.headers);
                         headers.set('X-Tfl-Cached-At', String(Date.now()));
@@ -95,7 +96,7 @@ self.addEventListener('fetch', event => {
                 })
                 .catch(async () => {
                     const cached = await caches.match(event.request);
-                    if (cached && !requestUrl.pathname.endsWith('/Arrivals')) {
+                    if (cached && !isJourneyRequest && !requestUrl.pathname.endsWith('/Arrivals')) {
                         const headers = new Headers(cached.headers);
                         headers.set('X-Tfl-Offline', 'true');
                         exposeTfLCacheHeaders(headers);

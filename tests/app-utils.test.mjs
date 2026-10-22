@@ -4,6 +4,7 @@ import {
     escapeHtml,
     haversineDistance,
     isWithinCommuteWindow,
+    normalizeJourneyOptions,
     normalizePreferences,
     sortLines
 } from '../app-utils.mjs';
@@ -31,19 +32,59 @@ test('commute window supports midnight wraparound and ignores invalid times', ()
 test('saved origin, unit and theme preferences are restored with safe defaults', () => {
     const preferences = normalizePreferences({
         origin: { lat: 51.5, lon: -0.12, name: 'Holborn' },
+        destination: { lat: 51.515, lon: -0.1415, name: 'Oxford Circus' },
         distanceUnit: 'miles',
         theme: 'light'
     });
     assert.deepEqual(preferences, {
         origin: { lat: 51.5, lon: -0.12, name: 'Holborn' },
+        destination: { lat: 51.515, lon: -0.1415, name: 'Oxford Circus' },
         distanceUnit: 'miles',
         theme: 'light'
     });
     assert.deepEqual(normalizePreferences({ origin: { lat: 100, lon: 0 }, distanceUnit: 'yards' }), {
         origin: { lat: 51.5074, lon: -0.1278, name: 'Central London (Default)' },
+        destination: null,
         distanceUnit: 'km',
         theme: null
     });
+});
+
+test('journey options summarize Tube lines, transfers and disruptions and remove duplicates', () => {
+    const legs = [
+        { mode: { name: 'walking' }, duration: 5, instruction: { summary: 'Walk to station' } },
+        {
+            mode: { name: 'tube' },
+            duration: 4,
+            departurePoint: { commonName: 'Station A' },
+            arrivalPoint: { commonName: 'Station B' },
+            instruction: { summary: 'Take Central line' },
+            routeOptions: [{ name: 'Central' }],
+            disruptions: [{ description: 'Central line has minor delays.' }]
+        },
+        {
+            mode: { name: 'tube' },
+            duration: 3,
+            departurePoint: { commonName: 'Station B' },
+            arrivalPoint: { commonName: 'Station C' },
+            instruction: { summary: 'Take Jubilee line' },
+            routeOptions: [{ name: 'Jubilee' }]
+        },
+        { mode: { name: 'walking' }, duration: 2, instruction: { summary: 'Walk to destination' } }
+    ];
+    const journey = { duration: 16, arrivalDateTime: '2026-10-22T14:25:00', legs };
+    const routes = normalizeJourneyOptions([
+        journey,
+        { ...journey, arrivalDateTime: '2026-10-22T14:30:00' },
+        { duration: 4, legs: [{ mode: { name: 'walking' }, duration: 4 }] },
+        { duration: 10, legs: null }
+    ]);
+
+    assert.equal(routes.length, 1);
+    assert.deepEqual(routes[0].lines, ['Central', 'Jubilee']);
+    assert.equal(routes[0].changes, 1);
+    assert.equal(routes[0].walkingMinutes, 7);
+    assert.deepEqual(routes[0].disruptions, ['Central line has minor delays.']);
 });
 
 test('Tube line sorting supports favorites, proximity, status and alphabetical order', () => {

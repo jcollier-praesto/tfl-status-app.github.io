@@ -21,6 +21,7 @@ export function isWithinCommuteWindow(now, commuteTimes, windowMinutes = 30) {
 
 export function normalizePreferences(preferences) {
     const origin = preferences?.origin;
+    const destination = preferences?.destination;
     const validOrigin = origin
         && Number.isFinite(origin.lat)
         && origin.lat >= -90
@@ -29,6 +30,14 @@ export function normalizePreferences(preferences) {
         && origin.lon >= -180
         && origin.lon <= 180
         && typeof origin.name === 'string';
+    const validDestination = destination
+        && Number.isFinite(destination.lat)
+        && destination.lat >= -90
+        && destination.lat <= 90
+        && Number.isFinite(destination.lon)
+        && destination.lon >= -180
+        && destination.lon <= 180
+        && typeof destination.name === 'string';
 
     return {
         origin: validOrigin ? origin : {
@@ -36,9 +45,62 @@ export function normalizePreferences(preferences) {
             lon: -0.1278,
             name: 'Central London (Default)'
         },
+        destination: validDestination ? destination : null,
         distanceUnit: preferences?.distanceUnit === 'miles' ? 'miles' : 'km',
         theme: preferences?.theme === 'light' || preferences?.theme === 'dark' ? preferences.theme : null
     };
+}
+
+export function normalizeJourneyOptions(journeys) {
+    if (!Array.isArray(journeys)) return [];
+
+    const routes = [];
+    const routeKeys = new Set();
+    journeys.forEach(journey => {
+        if (!Number.isFinite(journey?.duration) || !Array.isArray(journey.legs)) return;
+        const legs = journey.legs.map(leg => {
+            const mode = String(leg?.mode?.name || 'unknown').toLowerCase();
+            const lineName = mode === 'tube'
+                ? String(leg?.routeOptions?.[0]?.name || '')
+                : '';
+            return {
+                mode,
+                lineName,
+                instruction: leg?.instruction?.summary || leg?.instruction?.detailed || '',
+                departure: leg?.departurePoint?.commonName || '',
+                arrival: leg?.arrivalPoint?.commonName || '',
+                duration: Number.isFinite(leg?.duration) ? leg.duration : 0,
+                disruptions: Array.isArray(leg?.disruptions)
+                    ? leg.disruptions.map(disruption => disruption?.description).filter(Boolean)
+                    : []
+            };
+        });
+        const tubeLegs = legs.filter(leg => leg.mode === 'tube');
+        if (!tubeLegs.length) return;
+
+        const routeKey = legs.map(leg =>
+            `${leg.mode}:${leg.lineName}:${leg.departure}:${leg.arrival}`
+        ).join('|');
+        if (routeKeys.has(routeKey)) return;
+        routeKeys.add(routeKey);
+
+        const lines = tubeLegs.reduce((list, leg) => {
+            if (leg.lineName && list[list.length - 1] !== leg.lineName) list.push(leg.lineName);
+            return list;
+        }, []);
+        routes.push({
+            duration: journey.duration,
+            arrivalDateTime: journey.arrivalDateTime || '',
+            alternativeRoute: Boolean(journey.alternativeRoute),
+            legs,
+            lines,
+            changes: Math.max(0, lines.length - 1),
+            walkingMinutes: legs.filter(leg => leg.mode === 'walking').reduce((total, leg) => total + leg.duration, 0),
+            disruptions: [...new Set(legs.flatMap(leg => leg.disruptions))]
+        });
+    });
+
+    return routes;
 }
 
 export function sortLines(lines, sortBy) {
